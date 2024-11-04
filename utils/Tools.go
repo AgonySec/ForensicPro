@@ -26,6 +26,10 @@ type dataBlob struct {
 }
 
 func decryptData(encryptedData []byte) ([]byte, error) {
+	if len(encryptedData) == 0 {
+		return nil, fmt.Errorf("encrypted data is empty")
+	}
+
 	var outBlob dataBlob
 
 	// Prepare input data blob
@@ -103,7 +107,9 @@ func GetMasterKey(BrowserPath string) ([]byte, error) {
 
 // DecryptAESGCM 解密密码密文
 func DecryptAESGCM(encryptedPassword []byte, key []byte) ([]byte, error) {
-
+	if len(encryptedPassword) == 0 {
+		return nil, fmt.Errorf("encrypted password is empty")
+	}
 	str := string(encryptedPassword)
 	var plaintext []byte
 	// 检查字符串是否以 "v10" 或 "v11" 开头

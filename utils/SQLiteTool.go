@@ -5,18 +5,29 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// ReadSQLiteDB 读取 SQLite 数据库文件并执行 SQL 查询
+// contains 函数检查字符串数组中是否包含特定的字符串
+func contains(arr []int, str int) bool {
+	for _, v := range arr {
+		if v == str {
+			return true
+		}
+	}
+	return false
+}
+
+// 读取 SQLite 数据库文件并执行 SQL 查询
 func ReadSQLiteDB_url(dbPath string, query string) (string, error) {
 	// 创建一个 strings.Builder 对象，用于构建最终的字符串结果
 	var builder strings.Builder
 
 	// 创建一个临时文件
-	tempFile, err := os.CreateTemp("", "chrome-history-*.db")
+	tempFile, err := os.CreateTemp("", "temp_history-*.db")
 	if err != nil {
 		return "", err
 	}
@@ -50,6 +61,102 @@ func ReadSQLiteDB_url(dbPath string, query string) (string, error) {
 		}
 		// 将结果添加到 strings.Builder 中
 		builder.WriteString(url + "\n")
+	}
+
+	// 返回构建的字符串结果
+	return builder.String(), nil
+}
+func ReadSQLiteDB_url2(dbPath string, query string) (string, []string) {
+	// 创建一个 strings.Builder 对象，用于构建最终的字符串结果
+	var builder strings.Builder
+
+	// 创建一个临时文件
+	tempFile, err := os.CreateTemp("", "temp_history-*.db")
+	if err != nil {
+		return "", nil
+	}
+	defer os.Remove(tempFile.Name()) // 确保临时文件在函数结束时被删除
+
+	// 将数据库文件复制到临时文件
+	if err := copyFile(dbPath, tempFile.Name()); err != nil {
+		return "", nil
+	}
+
+	// 打开 SQLite 数据库
+	db, err := sql.Open("sqlite3", tempFile.Name())
+	if err != nil {
+		return "", nil
+	}
+
+	// 执行 SQL 查询
+	rows, err := db.Query(query)
+	if err != nil {
+		return "", nil
+	}
+	defer rows.Close()
+	var list []int
+	// 遍历查询结果
+	for rows.Next() {
+		var fk sql.NullInt64
+		if err := rows.Scan(&fk); err != nil {
+			fmt.Println("扫描行失败:", err)
+			return "", nil
+		}
+		if fk.Valid && fk.Int64 != 0 {
+			list = append(list, int(fk.Int64))
+		}
+	}
+
+	rows, err = db.Query("SELECT id, url FROM moz_places ")
+	if err != nil {
+		return "", nil
+	}
+	defer rows.Close()
+	// 获取查询结果的列数
+	columns, err := rows.Columns()
+	if err != nil {
+		return "", nil
+	}
+	// 预分配切片以存储每一行的数据
+	values := make([]interface{}, len(columns))
+	valuePtrs := make([]interface{}, len(columns))
+	// 遍历查询结果
+	for rows.Next() {
+		for i := range columns {
+			valuePtrs[i] = &values[i]
+		}
+		if err := rows.Scan(valuePtrs...); err != nil {
+			return "", nil
+		}
+		var id string = "0"
+		for i, value := range values {
+			var fieldValue string
+			switch v := value.(type) {
+			case int:
+				fieldValue = strconv.Itoa(v)
+			case string:
+				fieldValue = v
+			default:
+				fieldValue = fmt.Sprintf("%v", v)
+			}
+			if columns[i] == "id" {
+				num, _ := strconv.Atoi(fieldValue)
+				if contains(list, num) {
+					//fmt.Printf("The array contains '%s'.\n", fieldValue)
+					id = fieldValue
+					//list2 = append(list2, )
+				}
+			}
+			if columns[i] == "url" {
+				if id != "0" {
+					builder.WriteString(fieldValue + "\n")
+				}
+			}
+
+		}
+
+		// 将结果添加到 strings.Builder 中
+		//builder.WriteString(url + "\n")
 	}
 
 	// 返回构建的字符串结果
@@ -104,24 +211,39 @@ func ReadSQLiteDB(dbPath string, query string) (string, error) {
 		}
 
 		if err := rows.Scan(valuePtrs...); err != nil {
-			return "", err
+			return "", nil
 		}
-
+		var host string
+		var name string
+		var cookieValue string
 		// 将结果添加到 strings.Builder 中
 		for i, value := range values {
+			var fieldValue string
 			switch v := value.(type) {
-			case []byte:
-				builder.WriteString(string(v))
 			case string:
-				builder.WriteString(v)
-			default:
-				builder.WriteString(fmt.Sprintf("%v", v))
+				fieldValue = v
+				//builder.WriteString(v)
 			}
-			if i < len(values)-1 {
-				builder.WriteString("\t") // 使用制表符分隔字段
+			if columns[i] == "host" {
+				host = fieldValue
+			}
+			if columns[i] == "name" {
+				name = fieldValue
+			}
+			if columns[i] == "value" {
+				cookieValue = fieldValue
 			}
 		}
-		builder.WriteString("\n")
+		// 构建 JSON 字符串
+		jsonStr2 := fmt.Sprintf(`{
+			"host": "%s",
+			"name": "%s",
+			"value": "%s"
+		}`, host, name, cookieValue)
+		builder.WriteString(jsonStr2)
+		//builder.WriteString("[" + host + "] \t {" + name + "}={" + cookieValue + "}")
+		//builder.WriteString("\n")
+
 	}
 
 	// 返回构建的字符串结果

