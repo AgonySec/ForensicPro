@@ -9,7 +9,16 @@ require (
 )
 
 require (
+	github.com/gen2brain/shm v0.1.0 // indirect
+	github.com/godbus/dbus/v5 v5.1.0 // indirect
+	github.com/jezek/xgb v1.1.1 // indirect
+	github.com/kbinani/screenshot v0.0.0-20240820160931-a8a2c5d0e191 // indirect
+	github.com/lxn/win v0.0.0-20210218163916-a377121e959e // indirect
+	golang.org/x/text v0.19.0 // indirect
+)
+
+require (
 	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	golang.org/x/sys v0.1.0
+	golang.org/x/sys v0.24.0
 )

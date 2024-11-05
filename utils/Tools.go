@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"io"
+	"io/ioutil"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -25,7 +27,7 @@ type dataBlob struct {
 	pbData *byte
 }
 
-func decryptData(encryptedData []byte) ([]byte, error) {
+func DecryptData(encryptedData []byte) ([]byte, error) {
 	if len(encryptedData) == 0 {
 		return nil, fmt.Errorf("encrypted data is empty")
 	}
@@ -68,7 +70,7 @@ func decryptData(encryptedData []byte) ([]byte, error) {
 	return decryptedData, nil
 }
 
-// GetMasterKey 获取解密后的主密钥
+// 获取解密后的主密钥
 func GetMasterKey(BrowserPath string) ([]byte, error) {
 	// 	定义Local State 文件路径
 	LocalState := filepath.Join(BrowserPath, "Local State")
@@ -97,7 +99,7 @@ func GetMasterKey(BrowserPath string) ([]byte, error) {
 		return nil, errors.Wrap(err, "解码 Base64 失败")
 	}
 	decodedKey = decodedKey[5:]
-	decryptedData, err := decryptData(decodedKey)
+	decryptedData, err := DecryptData(decodedKey)
 	if err != nil {
 		fmt.Println("Error decrypting data:", err)
 		return nil, nil
@@ -105,7 +107,7 @@ func GetMasterKey(BrowserPath string) ([]byte, error) {
 	return decryptedData, nil
 }
 
-// DecryptAESGCM 解密密码密文
+// 解密密码密文
 func DecryptAESGCM(encryptedPassword []byte, key []byte) ([]byte, error) {
 	if len(encryptedPassword) == 0 {
 		return nil, fmt.Errorf("encrypted password is empty")
@@ -136,7 +138,7 @@ func DecryptAESGCM(encryptedPassword []byte, key []byte) ([]byte, error) {
 
 	} else {
 		//fmt.Println("字符串不以 v10 或 v11 开头")
-		plaintext, _ = decryptData(encryptedPassword)
+		plaintext, _ = DecryptData(encryptedPassword)
 	}
 
 	return plaintext, nil
@@ -158,4 +160,80 @@ func CopyFile(src, dst string) error {
 
 	_, err = io.Copy(dstFile, srcFile)
 	return err
+}
+
+// CopyDirectory 递归复制目录
+func CopyDirectory(src, dst string) error {
+	// 读取源目录的内容
+	files, err := ioutil.ReadDir(src)
+	if err != nil {
+		return fmt.Errorf("failed to read directory %s: %w", src, err)
+	}
+
+	// 创建目标目录
+	err = os.MkdirAll(dst, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", dst, err)
+	}
+
+	for _, file := range files {
+		srcPath := filepath.Join(src, file.Name())
+		dstPath := filepath.Join(dst, file.Name())
+
+		if file.IsDir() {
+			// 递归复制子目录
+			err = CopyDirectory(srcPath, dstPath)
+			if err != nil {
+				return err
+			}
+		} else {
+			// 复制文件
+			input, err := ioutil.ReadFile(srcPath)
+			if err != nil {
+				return fmt.Errorf("failed to read file %s: %w", srcPath, err)
+			}
+			err = ioutil.WriteFile(dstPath, input, file.Mode())
+			if err != nil {
+				return fmt.Errorf("failed to write file %s: %w", dstPath, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// 获取本地应用数据文件夹的路径
+func getLocalAppData() (string, error) {
+	u, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	return u.HomeDir + "\\AppData\\Local", nil
+}
+
+// 获取应用数据文件夹的路径
+func getAppData() (string, error) {
+	u, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	return u.HomeDir + "\\AppData\\Roaming", nil
+}
+
+// 获取浏览器路径
+func GetLocalAppDataPath(relativePath string) string {
+	localAppData, err := getLocalAppData()
+	if err != nil {
+		panic(err)
+	}
+	return filepath.Join(localAppData, relativePath)
+}
+
+// 获取 Opera 路径
+func GetOperaPath(relativePath string) string {
+	appData, err := getAppData()
+	if err != nil {
+		panic(err)
+	}
+	return filepath.Join(appData, relativePath)
 }

