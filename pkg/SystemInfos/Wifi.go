@@ -2,11 +2,7 @@ package SystemInfos
 
 import (
 	"ForensicPro/utils"
-	"bytes"
 	"fmt"
-	"golang.org/x/text/encoding/simplifiedchinese"
-	"golang.org/x/text/transform"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -16,15 +12,6 @@ import (
 
 var WifiInfoName = "Wifi"
 
-// ConvertGBKToUTF8 将GBK编码的字节切片转换为UTF-8编码的字符串
-func ConvertGBKToUTF8(gbkBytes []byte) (string, error) {
-	reader := transform.NewReader(bytes.NewReader(gbkBytes), simplifiedchinese.GBK.NewDecoder())
-	utf8Bytes, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return "", err
-	}
-	return string(utf8Bytes), nil
-}
 func WifiInfoSave(path string) {
 	var result strings.Builder
 	// 写入文件
@@ -41,7 +28,7 @@ func WifiInfoSave(path string) {
 	}
 
 	// 将GBK编码的输出转换为UTF-8编码
-	outputStr, err := ConvertGBKToUTF8(output)
+	outputStr, err := utils.ConvertGBKToUTF8(output)
 	//extractProfileNames(outputStr)
 	//
 	// 创建文件用于保存WiFi信息
@@ -65,7 +52,7 @@ func WifiInfoSave(path string) {
 			// 获取WiFi密码
 			cmd = exec.Command("netsh", "wlan", "show", "profile", name, "key=clear")
 			output, err = cmd.Output()
-			outputStr, err := ConvertGBKToUTF8(output)
+			outputStr, err := utils.ConvertGBKToUTF8(output)
 			if err != nil {
 				fmt.Println("获取WiFi密码失败:", err)
 				continue

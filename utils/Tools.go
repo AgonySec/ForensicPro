@@ -1,12 +1,18 @@
 package utils
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/sha1"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/blowfish"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/transform"
 	"io"
 	"io/ioutil"
 	"os"
@@ -236,4 +242,119 @@ func GetOperaPath(relativePath string) string {
 		panic(err)
 	}
 	return filepath.Join(appData, relativePath)
+}
+
+// 将GBK编码的字节切片转换为UTF-8编码的字符串
+func ConvertGBKToUTF8(gbkBytes []byte) (string, error) {
+	reader := transform.NewReader(bytes.NewReader(gbkBytes), simplifiedchinese.GBK.NewDecoder())
+	utf8Bytes, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return "", err
+	}
+	return string(utf8Bytes), nil
+}
+
+type Navicat11Cipher struct {
+	blowfishCipher *blowfish.Cipher
+}
+
+// StringToByteArray converts a hex string to a byte array
+func StringToByteArray(hexStr string) ([]byte, error) {
+	return hex.DecodeString(hexStr)
+}
+
+// XorBytes performs XOR between two byte slices
+func XorBytes(a, b []byte, len int) {
+	for i := 0; i < len; i++ {
+		a[i] ^= b[i]
+	}
+}
+
+// NewNavicat11Cipher initializes the Navicat11Cipher with a default key
+func NewNavicat11Cipher() (*Navicat11Cipher, error) {
+	bytes := []byte("3DC5CA39")
+	hash := sha1.New()
+	hash.Write(bytes)
+	key := hash.Sum(nil)
+
+	blowfishCipher, err := blowfish.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Navicat11Cipher{
+		blowfishCipher: blowfishCipher,
+	}, nil
+}
+
+// NewNavicat11CipherWithCustomKey initializes the Navicat11Cipher with a custom user key
+func NewNavicat11CipherWithCustomKey(customUserKey string) (*Navicat11Cipher, error) {
+	bytes := []byte(customUserKey)
+	hash := sha1.New()
+	hash.Write(bytes)
+	key := hash.Sum(nil)[:8] // Use the first 8 bytes as the key
+
+	blowfishCipher, err := blowfish.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Navicat11Cipher{
+		blowfishCipher: blowfishCipher,
+	}, nil
+}
+
+// DecryptString decrypts the provided ciphertext using the blowfish cipher
+func (n *Navicat11Cipher) DecryptString(ciphertext string) (string, error) {
+	num := 8
+	array, err := StringToByteArray(ciphertext)
+	if err != nil {
+		return "", err
+	}
+
+	array2 := make([]byte, num)
+	for i := 0; i < num; i++ {
+		array2[i] = byte(0xFF)
+	}
+
+	// Initial block encryption
+	n.blowfishCipher.Encrypt(array2, array2)
+
+	var result []byte
+	num2 := len(array) / num
+	num3 := len(array) % num
+	var array4, array5 []byte
+
+	for i := 0; i < num2; i++ {
+		// Process each 8-byte block
+		array4 = array[i*num : (i+1)*num]
+		array5 = make([]byte, num)
+		copy(array5, array4)
+
+		n.blowfishCipher.Decrypt(array4, array4)
+		XorBytes(array4, array2, num)
+		result = append(result, array4...)
+
+		XorBytes(array2, array5, num)
+	}
+
+	if num3 != 0 {
+		// Handle remainder block if any
+		array4 = make([]byte, num)
+		copy(array4, array[num2*num:])
+		n.blowfishCipher.Encrypt(array2, array2)
+		XorBytes(array4, array2, num)
+		result = append(result, array4[:num3]...)
+	}
+
+	return string(result), nil
+}
+
+// GetPersonalFolderPath 获取用户的个人文件夹路径
+func GetPersonalFolderPath() (string, error) {
+	currentUser, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	return currentUser.HomeDir, nil
 }

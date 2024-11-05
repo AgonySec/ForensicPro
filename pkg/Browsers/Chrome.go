@@ -284,17 +284,12 @@ func readSQLiteDB2(dbPath string, query string) (string, interface{}) {
 			switch columns[i] {
 			case "host_key":
 				domain = fieldValue
-				//builder.WriteString(fmt.Sprintf(`  "domain": "%s",\n`, fieldValue))
 			case "name":
 				name = fieldValue
-				//builder.WriteString(fmt.Sprintf(`  "name": "%s",\n`, fieldValue))
 			case "encrypted_value":
 				encryptedValue = fieldValue
-				//builder.WriteString(fmt.Sprintf(`  "value": "%s",\n`, fieldValue))
 			case "path":
 				path = fieldValue
-				//builder.WriteString(fmt.Sprintf(`  "path": "%s",\n`, fieldValue))
-				//builder.WriteString(fmt.Sprintf(`  "expirationDate": %.1f,\n`, num))
 			}
 
 		}
