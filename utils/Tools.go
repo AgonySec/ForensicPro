@@ -16,8 +16,10 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"unsafe"
@@ -357,4 +359,24 @@ func GetPersonalFolderPath() (string, error) {
 		return "", err
 	}
 	return currentUser.HomeDir, nil
+}
+
+// GetCurrentUserSID 获取当前用户的SID
+func GetCurrentUserSID() (string, error) {
+	var out bytes.Buffer
+	cmd := exec.Command("whoami", "/all")
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+
+	// 正则表达式匹配SID
+	re := regexp.MustCompile(`S-1-\d+-\d+-\d+-\d+-\d+-\d+`)
+	matches := re.FindStringSubmatch(out.String())
+	if len(matches) < 1 {
+		return "", fmt.Errorf("SID not found")
+	}
+
+	return matches[0], nil
 }

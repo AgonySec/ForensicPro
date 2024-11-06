@@ -12,9 +12,12 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"strings"
+	_ "syscall"
+	_ "unsafe"
 )
 
 var XmanagerName = "Xmanager"
@@ -54,25 +57,36 @@ func GetAllAccessibleFiles(rootPath string) {
 // DecryptSessions 解密会话文件
 func DecryptSessions() string {
 	var stringBuilder bytes.Buffer
-	currentUser := os.Getuid()
+	// 获取当前用户信息
+	var currentUser, err = user.Current()
+	if err != nil {
+		fmt.Println("获取当前用户信息失败:", err)
+		return ""
+	}
+	username := currentUser.Username
+	// 对用户名进行切割
+	// 对用户名进行切割
+	parts := strings.Split(username, "\\")
 
-	//currentUserName := os.Getusername()
-	// todo
-	currentUserName := "chenyuanhang"
-	text := fmt.Sprintf("%d", currentUser)
-	text2 := currentUserName
+	// 检查切割结果
+	if len(parts) > 1 {
+		// 取切割后的第二个部分
+		username = parts[1]
+	}
+	sid, _ := utils.GetCurrentUserSID()
+	//text := fmt.Sprintf("%d", currentUser)
 
 	for _, sessionFile := range sessionFiles {
 		list := ReadConfigFile(sessionFile)
 		if len(list) >= 4 {
 			stringBuilder.WriteString(fmt.Sprintf("Session File: %s\n", sessionFile))
-			stringBuilder.WriteString(fmt.Sprintf("Version: %s", list[0]))
-			stringBuilder.WriteString(fmt.Sprintf("Host: %s", list[1]))
-			stringBuilder.WriteString(fmt.Sprintf("UserName: %s", list[2]))
-			stringBuilder.WriteString(fmt.Sprintf("rawPass: %s", list[3]))
-			stringBuilder.WriteString(fmt.Sprintf("UserName: %s\n", text2))
-			stringBuilder.WriteString(fmt.Sprintf("Sid: %s\n", text))
-			stringBuilder.WriteString(fmt.Sprintf("%s\n", Decrypt(text2, text, list[3], strings.ReplaceAll(list[0], "\r", ""))))
+			stringBuilder.WriteString(fmt.Sprintf("Version: %s\n", list[0]))
+			stringBuilder.WriteString(fmt.Sprintf("Host: %s\n", list[1]))
+			stringBuilder.WriteString(fmt.Sprintf("UserName: %s\n", list[2]))
+			stringBuilder.WriteString(fmt.Sprintf("rawPass: %s\n", list[3]))
+			stringBuilder.WriteString(fmt.Sprintf("UserName: %s\n", username))
+			stringBuilder.WriteString(fmt.Sprintf("Sid: %s\n", sid))
+			stringBuilder.WriteString(fmt.Sprintf("%s\n", Decrypt(username, sid, list[3], strings.ReplaceAll(list[0], "\r", ""))))
 			stringBuilder.WriteString("\n")
 		}
 	}
@@ -80,9 +94,7 @@ func DecryptSessions() string {
 	return stringBuilder.String()
 }
 
-// Decrypt function to decrypt the password based on the version
 func Decrypt(username, sid, rawPass, ver string) string {
-	// 代码bug，todo
 	if strings.HasPrefix(ver, "5.0") || strings.HasPrefix(ver, "4") || strings.HasPrefix(ver, "3") || strings.HasPrefix(ver, "2") {
 		array, _ := base64.StdEncoding.DecodeString(rawPass)
 		key := sha256.New()
@@ -175,35 +187,35 @@ func ReadConfigFile(path string) []string {
 
 	input := inputStr.String()
 
-	var item, item2, item3, text string
+	var username, host, passwd, version string
 
 	re := regexp.MustCompile(`(?m)Version=(.*)`)
 	match := re.FindStringSubmatch(input)
 	if len(match) > 1 {
-		item = match[1]
+		version = match[1]
 	}
 
 	re = regexp.MustCompile(`(?m)Host=(.*)`)
 	match = re.FindStringSubmatch(input)
 	if len(match) > 1 {
-		item2 = match[1]
+		host = match[1]
 	}
 
 	re = regexp.MustCompile(`(?m)UserName=(.*)`)
 	match = re.FindStringSubmatch(input)
 	if len(match) > 1 {
-		item3 = match[1]
+		username = match[1]
 	}
 
 	re = regexp.MustCompile(`(?m)Password=(.*)`)
 	match = re.FindStringSubmatch(input)
 	if len(match) > 1 {
-		text = match[1]
+		passwd = match[1]
 	}
 
-	list = append(list, item, item2, item3)
-	if len(text) > 3 {
-		list = append(list, text)
+	list = append(list, version, host, username)
+	if len(passwd) > 3 {
+		list = append(list, passwd)
 	}
 
 	return list
@@ -224,5 +236,6 @@ func XmanagerSave(path string) {
 			return
 		}
 	}
+	fmt.Println("Xmanager 数据保存成功")
 
 }
