@@ -15,7 +15,7 @@ var FirefoxPath = GetOperaPath("Mozilla\\Firefox\\Profiles")
 var FirefoxBrowserName = "FireFox"
 
 func FirefoxPasswords() (string, error) {
-	// todo
+	// todo 本机firefox解密不了。。。
 	return "", nil
 }
 func FirefoxHistory() (string, error) {

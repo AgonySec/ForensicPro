@@ -152,8 +152,32 @@ func DecryptAESGCM(encryptedPassword []byte, key []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
-// 辅助函数：复制文件
 func CopyFile(src, dst string) error {
+	// 使用 os.OpenFile 以只读模式打开源文件
+	srcFile, err := os.OpenFile(src, os.O_RDONLY, 0)
+	if err != nil {
+		return fmt.Errorf("打开源文件失败: %v", err)
+	}
+	defer srcFile.Close()
+
+	// 创建目标文件
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return fmt.Errorf("创建目标文件失败: %v", err)
+	}
+	defer dstFile.Close()
+
+	// 复制文件内容
+	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		return fmt.Errorf("复制文件失败: %v", err)
+	}
+
+	return nil
+}
+
+// 辅助函数：复制文件
+func CopyFile_old(src, dst string) error {
 	srcFile, err := os.Open(src)
 	if err != nil {
 		return err
@@ -203,6 +227,56 @@ func CopyDirectory(src, dst string) error {
 			err = ioutil.WriteFile(dstPath, input, file.Mode())
 			if err != nil {
 				return fmt.Errorf("failed to write file %s: %w", dstPath, err)
+			}
+		}
+	}
+
+	return nil
+}
+func CopyLockDirectory(src, dst string) error {
+	// 读取源目录的内容
+	files, err := ioutil.ReadDir(src)
+	if err != nil {
+		return fmt.Errorf("failed to read directory %s: %w", src, err)
+	}
+
+	// 创建目标目录
+	err = os.MkdirAll(dst, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", dst, err)
+	}
+
+	for _, file := range files {
+		srcPath := filepath.Join(src, file.Name())
+		dstPath := filepath.Join(dst, file.Name())
+
+		if file.IsDir() {
+			// 递归复制子目录
+			err = CopyDirectory(srcPath, dstPath)
+			if err != nil {
+				return err
+			}
+		} else {
+			// 尝试以只读模式打开文件
+			srcFile, err := os.OpenFile(srcPath, os.O_RDONLY, 0)
+			if err != nil {
+				fmt.Printf("failed to open file %s: %v, skipping...\n", srcPath, err)
+				continue
+			}
+			defer srcFile.Close()
+
+			// 读取文件内容
+			input, err := ioutil.ReadAll(srcFile)
+			if err != nil {
+				fmt.Printf("failed to read file %s: %v, skipping...\n", srcPath, err)
+				continue
+			}
+
+			// 写入目标文件
+			err = ioutil.WriteFile(dstPath, input, file.Mode())
+			if err != nil {
+				fmt.Printf("failed to write file %s: %v, skipping...\n", dstPath, err)
+				continue
 			}
 		}
 	}
