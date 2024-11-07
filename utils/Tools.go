@@ -346,7 +346,7 @@ func XorBytes(a, b []byte, len int) {
 	}
 }
 
-// NewNavicat11Cipher initializes the Navicat11Cipher with a default key
+// initializes the Navicat11Cipher with a default key
 func NewNavicat11Cipher() (*Navicat11Cipher, error) {
 	bytes := []byte("3DC5CA39")
 	hash := sha1.New()
