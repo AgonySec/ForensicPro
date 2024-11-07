@@ -27,7 +27,7 @@ func ReadSQLiteDB_url(dbPath string, query string) (string, error) {
 	var builder strings.Builder
 
 	// 创建一个临时文件
-	tempFile, err := os.CreateTemp("", "temp_history-*.db")
+	tempFile, err := os.CreateTemp("", "temp_sqlite-*.db")
 	if err != nil {
 		return "", err
 	}
@@ -40,6 +40,7 @@ func ReadSQLiteDB_url(dbPath string, query string) (string, error) {
 
 	// 打开 SQLite 数据库
 	db, err := sql.Open("sqlite3", tempFile.Name())
+
 	if err != nil {
 		return "", err
 	}

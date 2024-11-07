@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-var SogouName = "OldSogou"
+var SogouName = "OldSogouExplorer"
 var SogouPath = GetOperaPath("SogouExplorer")
 var sougoDefaultPath = filepath.Join(SogouPath, "\\Webkit\\Default")
 

@@ -55,21 +55,20 @@ func passDecode(input string) string {
 
 	exePath := filepath.Join(currentDir, "finalshellDC.exe")
 	if _, err := os.Stat(exePath); os.IsNotExist(err) {
-		log.Fatalf("文件 %s 不存在", exePath)
+		log.Printf("文件 %s 不存在，跳过执行", exePath)
+		return input
 	}
 
-	// 获取当前目录
-	//fmt.Printf("当前目录: %s\n", currentDir)
 	arg := input
 
 	cmd := exec.Command(exePath, arg)
 
 	output, err := cmd.Output()
 	if err != nil {
-		log.Fatalf("执行命令时出错: %v", err)
+		log.Printf("执行命令时出错: %v，跳过执行", err)
+		return input
 	}
-	//打印输出结果
-	//fmt.Println(string(output))
+
 	return string(output)
 }
 func extractValue(input, pattern string) string {
