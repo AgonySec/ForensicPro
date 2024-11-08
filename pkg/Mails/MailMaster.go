@@ -99,5 +99,5 @@ func MailMasterSave(path string) {
 		}
 
 	}
-	fmt.Println(mailMasterName + " 邮箱信息已保存")
+	fmt.Println("网易邮箱大师取证结束")
 }

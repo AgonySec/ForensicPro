@@ -187,4 +187,5 @@ func MailBirdSave(path string) {
 
 		utils.WriteToFile(info, targetPath+"\\MailBird.txt")
 	}
+	fmt.Println("MailBird邮箱取证结束")
 }

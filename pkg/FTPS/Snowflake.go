@@ -36,5 +36,6 @@ func SnowflakeSave(path string) {
 		}
 
 	}
+	fmt.Println("Snowflake 取证结束")
 
 }

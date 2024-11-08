@@ -47,5 +47,5 @@ func LineSave(path string) {
 			return
 		}
 	}
-	fmt.Println("Line ini saved successfully.")
+	fmt.Println("Line 取证结束.")
 }

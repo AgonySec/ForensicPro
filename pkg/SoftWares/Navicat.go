@@ -96,5 +96,5 @@ func NavicatSave(path string) {
 	if err != nil {
 		return
 	}
-	fmt.Println("Navicat 数据保存成功")
+	fmt.Println("Navicat 取证结束")
 }

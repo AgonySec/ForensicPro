@@ -151,5 +151,5 @@ func SogouSave(path string) {
 			}
 		}
 	}
-	fmt.Println(SogouName + " 浏览器信息已保存")
+	fmt.Println("搜狗浏览器取证结束")
 }

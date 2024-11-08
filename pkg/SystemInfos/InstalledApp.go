@@ -2,6 +2,7 @@ package SystemInfos
 
 import (
 	"ForensicPro/utils"
+	"fmt"
 	"golang.org/x/sys/windows/registry"
 	"log"
 	"os"
@@ -48,4 +49,5 @@ func InstalledAppSave(path string) {
 		log.Fatalf("创建目录失败: %v", err)
 	}
 	utils.WriteToFile(result, targetPath+"\\"+InstalledAppName+".txt")
+	fmt.Println("安装软件信息取证结束")
 }

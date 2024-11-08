@@ -2,6 +2,7 @@ package FTPS
 
 import (
 	"ForensicPro/utils"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -22,4 +23,5 @@ func FileZillaSave(path string) {
 		utils.CopyFile(FileZillaXMLPath, ftpdst)
 
 	}
+	fmt.Println("FileZilla 取证结束.")
 }

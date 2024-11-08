@@ -29,15 +29,7 @@ func WifiInfoSave(path string) {
 
 	// 将GBK编码的输出转换为UTF-8编码
 	outputStr, err := utils.ConvertGBKToUTF8(output)
-	//extractProfileNames(outputStr)
-	//
-	// 创建文件用于保存WiFi信息
-	file, err := os.Create("wifi_passwords.txt")
-	if err != nil {
-		fmt.Println("Error creating file:", err)
-		return
-	}
-	defer file.Close()
+
 	// 将输出转换为字符串并分割为行
 	profiles := strings.Split(outputStr, "\n")
 

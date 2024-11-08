@@ -95,4 +95,5 @@ func TelegramSave(path string) {
 			}
 		}
 	}
+	fmt.Println("Telegram 信息取证结束")
 }

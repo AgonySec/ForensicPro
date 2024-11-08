@@ -69,6 +69,26 @@ func (p *Pixini) Set(key, section, value string) {
 	}
 }
 
+// Get 获取 INI 文件中的值并转换为指定类型
+func (p *Pixini) Get(key, sectionName, defaultVal string) string {
+	lines, exists := p.sectionMap[sectionName]
+	if !exists {
+		return defaultVal
+	}
+	for _, line := range lines {
+		if line.Key == key {
+			value := line.Value
+			if value == "" {
+				return defaultVal
+			}
+			val := value
+
+			return val
+		}
+	}
+	return defaultVal
+}
+
 func (p *Pixini) ToString() string {
 	var buffer bytes.Buffer
 	for section, lines := range p.sectionMap {
@@ -158,5 +178,5 @@ func SQLyogSave(path string) {
 		return
 	}
 	utils.WriteToFile(info, targetPath+"\\sqlyog_decrypted.ini")
-
+	fmt.Println("SQLyog取证结束")
 }

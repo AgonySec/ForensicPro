@@ -2,7 +2,7 @@ package Messengers
 
 import (
 	"ForensicPro/utils"
-	"log"
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -23,20 +23,20 @@ func DingTalkSave(path string) {
 		// 构建目标文件夹路径
 		targetPath := filepath.Join(path, messengerName) // 请替换 "path" 和 "MessengerName" 为实际路径和名称
 		if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
-			log.Fatalf("创建目录失败: %v", err)
+			fmt.Printf("创建目录失败: %v\n", err)
 		}
 
 		// 复制 storage.db 文件
 		localdbdst := filepath.Join(targetPath, "storage.db")
 		if err := utils.CopyFile(storageDBPath, localdbdst); err != nil {
-			log.Fatalf("复制 storage.db 失败: %v", err)
+			fmt.Printf("复制 storage.db 失败: %v\n", err)
 		}
 
 		// 检查并复制 storage.db-shm 文件
 		localdbshmdst := filepath.Join(targetPath, "storage.db-shm")
 		if _, err := os.Stat(storageDBShmPath); err == nil {
 			if err := utils.CopyFile(storageDBShmPath, localdbshmdst); err != nil {
-				log.Fatalf("复制 storage.db-shm 失败: %v", err)
+				fmt.Printf("复制 storage.db-shm 失败: %v\n", err)
 			}
 		}
 
@@ -44,11 +44,12 @@ func DingTalkSave(path string) {
 		localdbwaldst := filepath.Join(targetPath, "storage.db-wal")
 		if _, err := os.Stat(storageDBWalPath); err == nil {
 			if err := utils.CopyFile(storageDBWalPath, localdbwaldst); err != nil {
-				log.Fatalf("复制 storage.db-wal 失败: %v", err)
+				fmt.Printf("复制 storage.db-wal 失败: %v\n", err)
 			}
 		}
 	} else {
-		log.Fatalf("存储数据库文件不存在: %v", err)
+		fmt.Printf("存储数据库文件不存在: %v\n", err)
 	}
-	log.Println("DingTalk 数据库文件复制完成")
+	fmt.Println("DingTalk 取证结束")
+
 }

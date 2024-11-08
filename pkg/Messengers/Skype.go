@@ -102,4 +102,5 @@ func SkypeSave(path string) {
 			return
 		}
 	}
+	fmt.Println("Skype 取证结束")
 }

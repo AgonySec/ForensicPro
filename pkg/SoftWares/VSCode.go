@@ -2,6 +2,7 @@ package SoftWares
 
 import (
 	"ForensicPro/utils"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -21,4 +22,5 @@ func VSCodeSave(path string) {
 		}
 		utils.CopyDirectory(VSCodeHistory, targetPath+"\\History")
 	}
+	fmt.Println("VSCode取证结束")
 }

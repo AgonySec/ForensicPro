@@ -236,6 +236,6 @@ func XmanagerSave(path string) {
 			return
 		}
 	}
-	fmt.Println("Xmanager 数据保存成功")
+	fmt.Println("Xmanager 取证结束")
 
 }

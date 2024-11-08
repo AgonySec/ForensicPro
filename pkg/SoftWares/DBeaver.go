@@ -149,4 +149,6 @@ func DBeaverSave(path string) {
 		utils.WriteToFile(content, targetPath+"\\"+DBeaverName+".txt")
 	}
 
+	fmt.Println("DBeaver取证结束")
+
 }

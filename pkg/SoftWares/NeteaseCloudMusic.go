@@ -2,6 +2,7 @@ package SoftWares
 
 import (
 	"ForensicPro/utils"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -22,4 +23,5 @@ func NeteaseCloudMusicSave(path string) {
 		}
 		utils.WriteToFile(" [InternetShortcut]\r\nURL=https://music.163.com/#/user/home?id="+text, targetPath+"\\userinfo.url")
 	}
+	fmt.Println("网易云音乐取证结束")
 }

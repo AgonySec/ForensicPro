@@ -587,6 +587,6 @@ func ChromeSave(path string) {
 
 		}
 	}
-	fmt.Println("Chrome内核浏览器取证结束")
+	fmt.Println("基于Chrome内核的浏览器取证结束")
 
 }

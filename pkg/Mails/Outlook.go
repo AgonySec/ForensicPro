@@ -147,6 +147,6 @@ func OutlookSave(path string) {
 		}
 		utils.WriteToFile(text, path+"\\"+OutlookName+".txt")
 	}
-	fmt.Println("Outlook 取证结束")
+	fmt.Println("Outlook邮箱取证结束")
 
 }

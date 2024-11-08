@@ -2,6 +2,7 @@ package FTPS
 
 import (
 	"ForensicPro/utils"
+	"fmt"
 	"golang.org/x/sys/windows/registry"
 	"log"
 	"os"
@@ -115,5 +116,6 @@ func WinSCPSave(path string) {
 		utils.WriteToFile(content, targetPath+"\\"+WinSCPName+".txt")
 
 	}
+	fmt.Println(WinSCPName + " 取证结束")
 
 }

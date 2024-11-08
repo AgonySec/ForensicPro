@@ -63,6 +63,6 @@ func QQSave(path string) {
 
 		}
 	}
-	fmt.Println("QQ number saved successfully.")
+	fmt.Println("QQ取证结束.")
 
 }

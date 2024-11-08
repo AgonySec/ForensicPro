@@ -12,7 +12,7 @@ import (
 var ScreenShotName = "ScreenShot"
 
 func ScreenShotInfoSave(path string) {
-	fmt.Println("ScreenShot")
+	//fmt.Println("ScreenShot")
 	// 获取屏幕数量
 	n := screenshot.NumActiveDisplays()
 	if n == 0 {
@@ -53,6 +53,6 @@ func ScreenShotInfoSave(path string) {
 			continue
 		}
 
-		fmt.Printf("Screenshot for screen %d saved as %s\n", i, fileName)
+		fmt.Println("截图取证结束")
 	}
 }

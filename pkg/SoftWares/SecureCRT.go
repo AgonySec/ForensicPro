@@ -223,5 +223,6 @@ func SecureCRTSave(path string) {
 		}
 		utils.WriteToFile(info, targetPath+"\\SecureCRT.txt")
 	}
+	fmt.Println("SecureCRT 取证结束")
 
 }

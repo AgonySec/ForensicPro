@@ -55,7 +55,7 @@ func passDecode(input string) string {
 
 	exePath := filepath.Join(currentDir, "finalshellDC.exe")
 	if _, err := os.Stat(exePath); os.IsNotExist(err) {
-		log.Printf("文件 %s 不存在，跳过执行", exePath)
+		//log.Printf("文件 %s 不存在，跳过执行", exePath)
 		return input
 	}
 
@@ -65,7 +65,7 @@ func passDecode(input string) string {
 
 	output, err := cmd.Output()
 	if err != nil {
-		log.Printf("执行命令时出错: %v，跳过执行", err)
+		//log.Printf("执行命令时出错: %v，跳过执行", err)
 		return input
 	}
 
@@ -98,6 +98,6 @@ func FinalShellSave(path string) {
 		}
 
 	}
-	fmt.Println("FinalShell 数据保存成功")
+	fmt.Println("FinalShell 取证结束")
 
 }
