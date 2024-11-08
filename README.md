@@ -18,9 +18,9 @@
 
 ## 使用
 
-　　双击可执行文件exe运行即可，也可以在命令行窗口运行，无需管理员权限，运行结束之后会生成一个ForensicPro_result.zip，取证结果都保存在里面
+　　双击可执行文件ForensicPro.exe运行即可，也可以在命令行窗口运行，无需管理员权限，无需联网，运行结束之后会生成一个ForensicPro_result.zip，取证结果都保存在里面
 
-​![image](assets/image-20241108153043-5chx8w7.png)​
+![image-20241108171619145](assets/image-20241108171619145.png)
 
 　　‍
 

