@@ -284,7 +284,7 @@ func CopyLockDirectory(src, dst string) error {
 	return nil
 }
 
-// 获取本地应用数据文件夹的路径
+// 获取Local本地应用数据文件夹的路径
 func getLocalAppData() (string, error) {
 	u, err := user.Current()
 	if err != nil {
@@ -293,7 +293,7 @@ func getLocalAppData() (string, error) {
 	return u.HomeDir + "\\AppData\\Local", nil
 }
 
-// 获取应用数据文件夹的路径
+// 获取Roaming应用数据文件夹的路径
 func getAppData() (string, error) {
 	u, err := user.Current()
 	if err != nil {
