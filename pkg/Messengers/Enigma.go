@@ -47,12 +47,16 @@ func EnigmaSave(path string) {
 			key, err := registry.OpenKey(registry.CURRENT_USER, `SOFTWARE\Enigma\Enigma`, registry.READ)
 			if err != nil {
 				log.Fatal(err)
+				return
+
 			}
 			defer key.Close()
 			// 读取所有值
 			values, err := key.ReadValueNames(-1) // 传入 -1 读取所有值
 			if err != nil {
 				log.Fatal(err)
+				return
+
 			}
 			// 输出每个值
 			for _, valueName := range values {

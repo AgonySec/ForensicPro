@@ -17,6 +17,7 @@ func getInstallPath() string {
 	key, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\Classes\Foxmail.url.mailto\Shell\open\command`, registry.READ)
 	if err != nil {
 		log.Fatal(err)
+		return ""
 	}
 	defer key.Close()
 

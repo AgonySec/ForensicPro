@@ -454,3 +454,22 @@ func GetCurrentUserSID() (string, error) {
 
 	return matches[0], nil
 }
+
+// 检查程序是否以管理员身份运行
+func IsAdmin() bool {
+	_, err := exec.Command("net", "session").Output()
+	if err != nil {
+		return false
+	}
+	return true
+}
+func PrintBanner() {
+	fmt.Println(`         _____                        _      ____            
+  /\    |  ___|__  _ __ ___ _ __  ___(_) ___|  _ \ _ __ ___  
+ /  \   | |_ / _ \| '__/ _ \ '_ \/ __| |/ __| |_) | '__/ _ \ 
+/ /\ \  |  _| (_) | | |  __/ | | \__ \ | (__|  __/| | | (_) |
+\/  \/  |_|  \___/|_|  \___|_| |_|___/_|\___|_|   |_|  \___/ `)
+	fmt.Println("欢迎使用 ^ ForensicPro V1.0 一款Windows自动取证工具 by:Agony")
+	fmt.Println("===================================================")
+	fmt.Println("下面开始进行Windows取证")
+}

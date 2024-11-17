@@ -4,7 +4,8 @@ import (
 	"ForensicPro/utils"
 	"bytes"
 	"fmt"
-	"github.com/shirou/gopsutil/process"
+	"github.com/StackExchange/wmi"
+	"github.com/shirou/gopsutil/net"
 	"golang.design/x/clipboard"
 	"golang.org/x/sys/windows/registry"
 	"io"
@@ -14,6 +15,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"unsafe"
 )
 
 var SystemInfoName = "Systeminfo"
@@ -466,12 +469,10 @@ func GetRecycleBin(path string) {
 			if err != nil {
 				continue
 			}
-
 			// 遍历该目录中的文件
 			for _, fileEntry := range fileEntries {
 				result.WriteString(fileEntry.Name())
 				result.WriteString("\n")
-
 			}
 		}
 	}
@@ -512,42 +513,404 @@ func GetClipboard(path string) {
 	fmt.Println("剪切板信息取证结束")
 
 }
-func GetProcessesOpenedFiles(path string) {
-	var builder strings.Builder
-	// 获取当前系统中运行的所有进程
-	processes, err := process.Processes()
+
+//
+//// 获取进程打开的文件
+//func GetProcessesOpenedFiles(path string) {
+//	var builder strings.Builder
+//	// 获取当前系统中运行的所有进程
+//	processes, err := process.Processes()
+//	if err != nil {
+//		fmt.Println("Error:", err)
+//		return
+//	}
+//	// 遍历所有进程
+//	for _, p := range processes {
+//		if p == nil {
+//			continue
+//		}
+//		// 获取每个进程打开的文件列表
+//		openFiles, err := p.OpenFiles()
+//		if err != nil {
+//			fmt.Printf("Error getting open files for process %d: %v\n", p.Pid, err)
+//			continue
+//		}
+//		if openFiles == nil {
+//			continue
+//		}
+//		// 打印每个进程的PID和打开的文件信息
+//		builder.WriteString(fmt.Sprintf("Process ID: %d\n", p.Pid))
+//		for _, file := range openFiles {
+//
+//			builder.WriteString(fmt.Sprintf("  File: %s, FD: %d\n", file.Path, file.Fd))
+//		}
+//		builder.WriteString("\n") // 打印空行以分隔不同进程的信息
+//	}
+//	targetPath := filepath.Join(path, SystemInfoName)
+//	if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
+//		log.Fatalf("创建目录失败: %v", err)
+//	}
+//	utils.WriteToFile(builder.String(), targetPath+"\\"+"Processes_Opened_Files.txt")
+//	fmt.Println("Processes_Opened_Files信息取证结束")
+//}
+
+// 根据协议类型返回协议名称
+func protocolName(protocolType uint32) string {
+	switch protocolType {
+	case 1:
+		return "TCP"
+	case 2:
+		return "UDP"
+	default:
+		return fmt.Sprintf("未知协议 (%d)", protocolType)
+	}
+}
+
+func getConnections() ([]net.ConnectionStat, error) {
+	conns, err := net.Connections("all") // 获取所有类型的连接（TCP/UDP）
 	if err != nil {
-		fmt.Println("Error:", err)
+		return nil, err
+	}
+	return conns, nil
+}
+func GetSockets(path string) {
+	var builder strings.Builder
+
+	conns, err := getConnections()
+	if err != nil {
+		fmt.Println("获取网络连接失败:", err)
 		return
 	}
-	// 遍历所有进程
-	for _, p := range processes {
-		// 获取每个进程打开的文件列表
-		openFiles, err := p.OpenFiles()
-		if err != nil {
-			//fmt.Printf("Error getting open files for process %d: %v\n", p.Pid, err)
-			continue
-		}
-		// 打印每个进程的PID和打开的文件信息
-		fmt.Printf("Process ID: %d\n", p.Pid)
-		for _, file := range openFiles {
-			builder.WriteString(fmt.Sprintf("  File: %s, FD: %d\n", file.Path, file.Fd))
-		}
-		fmt.Println() // 打印空行以分隔不同进程的信息
+
+	builder.WriteString("当前网络连接:\n")
+	for _, conn := range conns {
+		protocol := protocolName(conn.Type) // 获取协议名称
+		builder.WriteString(fmt.Sprintf("本地地址: %s, 远程地址: %s, 状态: %s, 协议: %s\n",
+			conn.Laddr, conn.Raddr, conn.Status, protocol))
 	}
 	targetPath := filepath.Join(path, SystemInfoName)
 	if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
 		log.Fatalf("创建目录失败: %v", err)
 	}
-	utils.WriteToFile(builder.String(), targetPath+"\\"+"Processes_Opened_Files.txt")
-	fmt.Println("Processes_Opened_Files信息取证结束")
+	utils.WriteToFile(builder.String(), targetPath+"\\"+"Sockets.txt")
+	fmt.Println("Sockets信息取证结束")
+
+}
+
+var (
+	modwtsapi32              = syscall.NewLazyDLL("wtsapi32.dll")
+	procWTSEnumerateSessions = modwtsapi32.NewProc("WTSEnumerateSessionsW")
+)
+
+type WTS_SESSION_INFO struct {
+	SessionID uint32
+	State     uint32
+}
+
+const (
+	WTSActive = 0x00000001
+	WTSIdle   = 0x00000002
+	WTSListen = 0x00000003
+)
+
+// 获取会话信息
+func GetSessions(path string) {
+	var sessionCount uint32
+	var sessions uintptr
+	var builder strings.Builder
+
+	// 调用WTSAPI中的WTSEnumerateSessionsW函数
+	ret, _, _ := procWTSEnumerateSessions.Call(0, 0, 1, uintptr(unsafe.Pointer(&sessions)), uintptr(unsafe.Pointer(&sessionCount)))
+	if ret == 0 {
+		fmt.Errorf("failed to enumerate sessions")
+		return
+	}
+
+	// 将 uintptr 转换为 *WTS_SESSION_INFO
+	sessionPtr := (*WTS_SESSION_INFO)(unsafe.Pointer(sessions))
+
+	// 转换返回的内存
+	sessionList := unsafe.Slice(sessionPtr, int(sessionCount))
+
+	if len(sessionList) == 0 {
+		builder.WriteString("No sessions found.")
+	} else {
+		for _, session := range sessionList {
+			builder.WriteString(fmt.Sprintf("Session ID: %d\n", session.SessionID))
+			builder.WriteString(fmt.Sprintf("State: %d\n", session.State))
+			builder.WriteString("-------------------------")
+		}
+	}
+	targetPath := filepath.Join(path, SystemInfoName)
+	if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
+		log.Fatalf("创建目录失败: %v", err)
+	}
+	utils.WriteToFile(builder.String(), targetPath+"\\"+"Sessions.txt")
+	fmt.Println("Sessions信息取证结束")
+}
+
+type Win32_Process struct {
+	ProcessID uint32
+	Name      string
+}
+
+// 获取进程信息
+func GetProcesses(path string) {
+	var processes []Win32_Process
+	var builder strings.Builder
+
+	query := "SELECT ProcessID, Name FROM Win32_Process"
+
+	// 执行WMI查询
+	err := wmi.Query(query, &processes)
+	if err != nil {
+		return
+	}
+	if len(processes) == 0 {
+		fmt.Println("No processes found.")
+	} else {
+		for _, process := range processes {
+			builder.WriteString(fmt.Sprintf("Process ID: %d, Name: %s\n", process.ProcessID, process.Name))
+		}
+	}
+	targetPath := filepath.Join(path, SystemInfoName)
+	if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
+		log.Fatalf("创建目录失败: %v", err)
+	}
+	utils.WriteToFile(builder.String(), targetPath+"\\"+"Processes.txt")
+	fmt.Println("Processes信息取证结束")
+}
+
+// 获取网卡信息
+func GetNetworksCards(path string) {
+	var builder strings.Builder
+
+	// 定义结构体以匹配 WMI 查询结果
+	type Win32_NetworkAdapter struct {
+		Name         string
+		AdapterType  string
+		DeviceID     string
+		Manufacturer string
+		MacAddress   string
+		Speed        uint32
+		NetEnabled   bool
+	}
+	var adapters []Win32_NetworkAdapter
+	query := "SELECT Name, AdapterType, DeviceID, Manufacturer, MACAddress, Speed, NetEnabled FROM Win32_NetworkAdapter"
+
+	// 执行 WMI 查询
+	err := wmi.Query(query, &adapters)
+	if err != nil {
+		return
+	}
+
+	if len(adapters) == 0 {
+		fmt.Println("No network adapters found.")
+	} else {
+		builder.WriteString("Network Adapter Information:")
+		for _, adapter := range adapters {
+			builder.WriteString(fmt.Sprintf("Name: %s\n", adapter.Name))
+			builder.WriteString(fmt.Sprintf("Adapter Type: %s\n", adapter.AdapterType))
+			builder.WriteString(fmt.Sprintf("Device ID: %s\n", adapter.DeviceID))
+			builder.WriteString(fmt.Sprintf("Manufacturer: %s\n", adapter.Manufacturer))
+			builder.WriteString(fmt.Sprintf("MAC Address: %s\n", adapter.MacAddress))
+			builder.WriteString(fmt.Sprintf("Speed: %d\n", adapter.Speed))
+			builder.WriteString(fmt.Sprintf("Enabled: %v\n\n", adapter.NetEnabled))
+		}
+	}
+	targetPath := filepath.Join(path, SystemInfoName)
+	if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
+		log.Fatalf("创建目录失败: %v", err)
+	}
+	utils.WriteToFile(builder.String(), targetPath+"\\"+"NetworksCards.txt")
+	fmt.Println("NetworksCards信息取证结束")
+}
+
+// 获取路由表信息
+func GetRoutesTables(path string) {
+	cmd := exec.Command("netstat", "-rn")
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	targetPath := filepath.Join(path, SystemInfoName)
+	if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
+		log.Fatalf("创建目录失败: %v", err)
+	}
+	utils.WriteToFile(string(output), targetPath+"\\"+"RoutesTables.txt")
+	fmt.Println("RoutesTables信息取证结束")
+
+}
+
+// 获取命名管道信息
+func GetNamedPipes(path string) {
+	// 执行 PowerShell 脚本查询命名管道
+	cmd := exec.Command("powershell", "-Command", "Get-ChildItem -Path '\\\\.\\pipe\\'")
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	targetPath := filepath.Join(path, SystemInfoName)
+	if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
+		log.Fatalf("创建目录失败: %v", err)
+	}
+
+	utils.WriteToFile(string(output), targetPath+"\\"+"NamedPipes.txt")
+	fmt.Println("NamedPipes信息取证结束")
+}
+
+// 获取账户信息
+func GetAccount(path string) {
+	// 执行 wmic useraccount 命令查询用户帐户信息
+	cmd := exec.Command("wmic", "useraccount", "get", "name,sid,disabled,description,fullname")
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	targetPath := filepath.Join(path, SystemInfoName)
+	if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
+		log.Fatalf("创建目录失败: %v", err)
+	}
+
+	utils.WriteToFile(string(output), targetPath+"\\"+"Account.txt")
+	fmt.Println("Account信息取证结束")
+}
+
+// 获取arp表信息
+func GetArpTable(path string) {
+	var builder strings.Builder
+
+	// 执行 arp -a 命令获取 ARP 表信息
+	cmd := exec.Command("arp", "-a")
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	result, _ := utils.ConvertGBKToUTF8(output)
+
+	// 输出 ARP 表
+	builder.WriteString("ARP Table Information:\n")
+	builder.WriteString(result + "\n")
+	// 解析 ARP 表信息
+	lines := strings.Split(result, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "动态") {
+			// 打印出动态映射的 IP 和 MAC 地址
+			builder.WriteString(line + "\n")
+		}
+	}
+
+	targetPath := filepath.Join(path, SystemInfoName)
+	if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
+		log.Fatalf("创建目录失败: %v", err)
+	}
+
+	utils.WriteToFile(builder.String(), targetPath+"\\"+"ArpTable.txt")
+	fmt.Println("ArpTable信息取证结束")
+}
+
+// 获取文件系统快照信息
+func GetFsSnapshot(path string) {
+	// 执行 vssadmin list shadows 获取 VSS 快照信息
+	cmd := exec.Command("vssadmin", "List", "Shadows")
+	output, err := cmd.Output()
+	if err != nil {
+		return
+	}
+	targetPath := filepath.Join(path, SystemInfoName)
+	if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
+		log.Fatalf("创建目录失败: %v", err)
+	}
+	utils.WriteToFile(string(output), targetPath+"\\"+"FsSnapshot.txt")
+	fmt.Println("FsSnapshot信息取证结束")
+}
+
+// 获取DNS缓存信息
+func GetDnsCaches(path string) {
+	// 执行 ipconfig /displaydns 获取 DNS 缓存信息
+	cmd := exec.Command("ipconfig", "/displaydns")
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	result, _ := utils.ConvertGBKToUTF8(output)
+	targetPath := filepath.Join(path, SystemInfoName)
+	if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
+		log.Fatalf("创建目录失败: %v", err)
+	}
+	utils.WriteToFile(result, targetPath+"\\"+"DnsCaches.txt")
+	fmt.Println("DnsCaches信息取证结束")
+}
+
+// 获取共享信息
+func GetShares(path string) {
+	// 执行 net share 获取共享信息
+	cmd := exec.Command("net", "share")
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	result, _ := utils.ConvertGBKToUTF8(output)
+
+	targetPath := filepath.Join(path, SystemInfoName)
+	if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
+		log.Fatalf("创建目录失败: %v", err)
+	}
+	utils.WriteToFile(result, targetPath+"\\"+"Shares.txt")
+	fmt.Println("Shares信息取证结束")
+}
+
+// 获取KB补丁信息
+func GetKB(path string) {
+	// 执行 wmic qfe 命令获取已安装的补丁信息
+	cmd := exec.Command("wmic", "qfe", "list", "full")
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	targetPath := filepath.Join(path, SystemInfoName)
+	if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
+		log.Fatalf("创建目录失败: %v", err)
+	}
+	utils.WriteToFile(string(output), targetPath+"\\"+"KB.txt")
+	fmt.Println("KB信息取证结束")
 }
 
 func SystemInfoSave(path string) {
-
-	//GetSystemInfo(path)
-	//GetUSBHistory(path)
-	//Get_custom_registry_keys(path)
-	//GetRecentDocs(path)
-
+	//GetProcessesOpenedFiles(path)
+	GetSystemInfo(path)
+	GetUSBHistory(path)
+	GetRecentDocs(path)
+	GetCustomRegistryKeys(path)
+	GetInstalledPrograms(path)
+	GetProcesses(path)
+	GetShares(path)
+	GetScheduledJobs(path)
+	GetSessions(path)
+	GetRecent(path)
+	GetClipboard(path)
+	GetInterfaces(path)
+	GetArpTable(path)
+	GetNamedPipes(path)
+	GetAccount(path)
+	GetNetworksCards(path)
+	GetRoutesTables(path)
+	GetFsSnapshot(path)
+	GetDnsCaches(path)
+	GetStartUp(path)
+	GetSystemStartup(path)
+	GetExplorerTypedPaths(path)
+	GetSockets(path)
+	GetNetworkList(path)
+	GetPrefetch(path)
+	GetShutdownTime(path)
+	GetRecycleBin(path)
 }
