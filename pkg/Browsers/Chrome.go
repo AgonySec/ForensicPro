@@ -174,7 +174,7 @@ func readSQLiteDB(dbPath string, query string) (string, error) {
 	return builder.String(), nil
 }
 
-func ChromePasswords() (string, error) {
+func ChromePasswords(targetDir string) (string, error) {
 	var builder strings.Builder
 	// 获取所有浏览器配置文件的数组
 	array := profiles //
@@ -189,6 +189,7 @@ func ChromePasswords() (string, error) {
 		if _, err := os.Stat(LoginDataPath); os.IsNotExist(err) {
 			return "", nil
 		}
+		utils.CopyFile(LoginDataPath, targetDir+"\\Login Data")
 		result, _ := readSQLiteDB(LoginDataPath, "SELECT signon_realm, username_value, password_value FROM logins")
 		builder.WriteString(result)
 	}
@@ -314,7 +315,7 @@ func readSQLiteDB2(dbPath string, query string) (string, interface{}) {
 }
 
 // todo 如果谷歌浏览器运行中，cookie文件将会被使用中，数据库文件结构会改变，导致无法读取到内容,目前没有解决方案，待后续研究
-func ChromeCookies() (string, error) {
+func ChromeCookies(targetDir string) (string, error) {
 	var builder strings.Builder
 	// 获取所有浏览器配置文件的数组
 	array := profiles //
@@ -333,12 +334,13 @@ func ChromeCookies() (string, error) {
 		if _, err := os.Stat(CookiesPath1); os.IsNotExist(err) {
 			return "", fmt.Errorf("both paths do not exist: %s and %s", CookiesPath1, CookiesPath2)
 		}
+		utils.CopyFile(CookiesPath1, targetDir+"\\Cookies")
 		result, _ := readSQLiteDB2(CookiesPath1, "SELECT host_key, name, encrypted_value,path,expires_utc FROM cookies")
 		builder.WriteString(result)
 	}
 	return builder.String(), nil
 }
-func ChromeBooks() (string, error) {
+func ChromeBooks(targetDir string) (string, error) {
 	// 实现获取 bookmarks 的逻辑
 	var builder strings.Builder
 	// 获取所有浏览器配置文件的数组
@@ -354,6 +356,7 @@ func ChromeBooks() (string, error) {
 		}
 		// 打开文件
 		result, _ := utils.ReadFileContent(path)
+		utils.CopyFile(path, targetDir+"\\Bookmarks")
 		builder.WriteString(result)
 	}
 	return builder.String(), nil
@@ -435,7 +438,7 @@ func ChromeExtensions() (string, error) {
 	}
 	return builder.String(), nil
 }
-func ChromeHistory() string {
+func ChromeHistory(targetDir string) string {
 	//fmt.Println("开始进行chrome浏览器历史记录取证")
 	// 创建一个 strings.Builder 对象，用于构建最终的字符串结果
 	var builder strings.Builder
@@ -456,6 +459,7 @@ func ChromeHistory() string {
 		if _, err := os.Stat(historyPath); os.IsNotExist(err) {
 			return ""
 		}
+		utils.CopyFile(historyPath, targetDir+"\\History")
 		result, err := utils.ReadSQLiteDB_url(historyPath, "SELECT url FROM urls")
 		if err != nil {
 			fmt.Println("Error reading database:", err)
@@ -499,9 +503,9 @@ func ChromeSave(path string) {
 		if err != nil {
 			continue
 		}
-
+		utils.CopyFile(BrowserPath+"\\Local State", targetDir+"\\Local State")
 		//取证历史记录文件
-		history := ChromeHistory()
+		history := ChromeHistory(targetDir)
 		if history != "" {
 			// 将历史记录写入到文件
 			outputFile := BrowserName + "_history.txt"
@@ -511,7 +515,7 @@ func ChromeSave(path string) {
 			}
 		}
 		// 取证书签
-		books, err := ChromeBooks()
+		books, err := ChromeBooks(targetDir)
 		if books != "" {
 			outputFile := BrowserName + "_books.txt"
 			if err := utils.WriteToFile(books, targetDir+"\\"+outputFile); err != nil {
@@ -520,7 +524,7 @@ func ChromeSave(path string) {
 			}
 		}
 		// 取证密码
-		passwords, err := ChromePasswords()
+		passwords, err := ChromePasswords(targetDir)
 		if passwords != "" {
 			outputFile := BrowserName + "_passwords.txt"
 			if err := utils.WriteToFile(passwords, targetDir+"\\"+outputFile); err != nil {
@@ -537,7 +541,7 @@ func ChromeSave(path string) {
 				return
 			}
 		}
-		cookies, err := ChromeCookies()
+		cookies, err := ChromeCookies(targetDir)
 		if cookies != "" {
 			outputFile := BrowserName + "_cookies.txt"
 			if err := utils.WriteToFile(cookies, targetDir+"\\"+outputFile); err != nil {

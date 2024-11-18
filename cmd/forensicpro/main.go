@@ -16,13 +16,13 @@ import (
 func main() {
 	startTime := time.Now() // 记录程序开始时间
 	utils.PrintBanner()     // 打印Banner
-
+	path := "result"
 	status := utils.IsAdmin()
 	if status == false {
 		fmt.Println("请使用管理员权限运行本程序")
 		return
 	}
-	GetAll("result")
+	GetAll(path)
 	endTime := time.Now()                 // 记录程序结束时间
 	elapsedTime := endTime.Sub(startTime) // 计算程序运行时间
 	fmt.Println("=================Windows取证结束=================")
@@ -31,6 +31,7 @@ func main() {
 }
 
 func GetAll(path string) {
+
 	var wg sync.WaitGroup
 
 	// Browsers

@@ -469,7 +469,7 @@ func PrintBanner() {
  /  \   | |_ / _ \| '__/ _ \ '_ \/ __| |/ __| |_) | '__/ _ \ 
 / /\ \  |  _| (_) | | |  __/ | | \__ \ | (__|  __/| | | (_) |
 \/  \/  |_|  \___/|_|  \___|_| |_|___/_|\___|_|   |_|  \___/ `)
-	fmt.Println("欢迎使用 ^ ForensicPro V1.0 一款Windows自动取证工具 by:Agony")
+	fmt.Println("欢迎使用 ^ ForensicPro V2.0 一款Windows自动取证工具 by:Agony")
 	fmt.Println("===================================================")
 	fmt.Println("下面开始进行Windows取证")
 }

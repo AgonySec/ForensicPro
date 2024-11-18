@@ -12,22 +12,21 @@ import (
 
 var FoxmailName = "Foxmail"
 
+// 获取 Foxmail 安装路径
 func getInstallPath() string {
-	// 打开注册表项
 	key, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\Classes\Foxmail.url.mailto\Shell\open\command`, registry.READ)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Failed to open registry key: %v", err)
 		return ""
 	}
 	defer key.Close()
 
-	// 读取默认值
 	values, _, err := key.GetStringValue("")
 	if err != nil {
+		log.Printf("Failed to get registry value: %v", err)
 		return ""
 	}
 
-	// 处理字符串
 	text := strings.Replace(values, "\"", "", -1)
 	index := strings.LastIndex(text, "Foxmail.exe")
 	if index != -1 {
@@ -36,6 +35,7 @@ func getInstallPath() string {
 
 	return text
 }
+
 func dirExists(path string) bool {
 	info, err := os.Stat(path)
 	if err == nil && info.IsDir() {
@@ -44,75 +44,29 @@ func dirExists(path string) bool {
 	return false
 }
 
-func fileExists(path string) bool {
-	info, err := os.Stat(path)
-	if err == nil && !info.IsDir() {
-		return true
-	}
-	return false
-}
+// 复制文件
 func copyFile(src, dst string) error {
 	input, err := ioutil.ReadFile(src)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read file %s: %w", src, err)
 	}
 	err = ioutil.WriteFile(dst, input, 0644)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to write file %s: %w", dst, err)
 	}
 	return nil
 }
-func CopyDirectory(src, dst string, recursive bool) error {
-	srcInfo, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-	if !srcInfo.IsDir() {
-		return fmt.Errorf("%s is not a directory", src)
-	}
 
-	err = os.MkdirAll(dst, srcInfo.Mode())
-	if err != nil {
-		return err
-	}
-
-	entries, err := ioutil.ReadDir(src)
-	if err != nil {
-		return err
-	}
-
-	for _, entry := range entries {
-		srcPath := filepath.Join(src, entry.Name())
-		dstPath := filepath.Join(dst, entry.Name())
-
-		if entry.IsDir() {
-			if recursive {
-				err = CopyDirectory(srcPath, dstPath, recursive)
-				if err != nil {
-					return err
-				}
-			}
-		} else {
-			err = copyFile(srcPath, dstPath)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-// CopyDirectory recursively copies a source directory to a destination
-func CopyDirectory2(src, dst string) error {
+// 递归复制目录
+func copyDirectory(src, dst string) error {
 	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return err
+			return fmt.Errorf("error walking the path %s: %w", path, err)
 		}
 
 		relPath, err := filepath.Rel(src, path)
 		if err != nil {
-			return err
+			return fmt.Errorf("error getting relative path for %s: %w", path, err)
 		}
 
 		targetPath := filepath.Join(dst, relPath)
@@ -125,41 +79,51 @@ func CopyDirectory2(src, dst string) error {
 	})
 }
 
+// 保存 Foxmail 数据
 func FoxmailSave(path string) {
+	fmt.Println("开始取证Foxmail邮箱")
 	installPath := getInstallPath()
-	if dirExists(installPath) && dirExists(filepath.Join(installPath, "Storage")) {
-		targetDir := filepath.Join(path, FoxmailName)
-		os.MkdirAll(targetDir, 0755)
+	if installPath == "" {
+		fmt.Println("未找到 Foxmail 安装路径")
+		return
+	}
 
-		storagePath := filepath.Join(installPath, "Storage")
-		//directories, err := ioutil.ReadDir(storagePath)
-		if _, err := os.Stat(storagePath); os.IsNotExist(err) {
-			return
-		}
-		err := filepath.Walk(storagePath, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
+	storagePath := filepath.Join(installPath, "Storage")
+	if !dirExists(storagePath) {
+		fmt.Println("未找到 Foxmail 存储目录")
+		return
+	}
 
-			if info.IsDir() && filepath.Base(path) == "Accounts" {
-				parentDir := filepath.Base(filepath.Dir(path))
-				destination := filepath.Join(targetDir, parentDir, "Accounts")
-				CopyDirectory2(path, destination)
-			}
+	targetDir := filepath.Join(path, FoxmailName)
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		log.Fatalf("Failed to create target directory %s: %v", targetDir, err)
+	}
 
-			return nil
-		})
+	err := filepath.Walk(storagePath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			fmt.Println("Failed to copy directories:", err)
-			return
+			return fmt.Errorf("error walking the path %s: %w", path, err)
 		}
-		fmStorageListPath := filepath.Join(installPath, "FMStorage.list")
-		if _, err := os.Stat(fmStorageListPath); err == nil {
-			err = copyFile(fmStorageListPath, filepath.Join(targetDir, "FMStorage.list"))
-			if err != nil {
-				fmt.Println("Failed to copy FMStorage.list:", err)
+
+		if info.IsDir() && filepath.Base(path) == "Accounts" {
+			parentDir := filepath.Base(filepath.Dir(path))
+			destination := filepath.Join(targetDir, parentDir, "Accounts")
+			if err := copyDirectory(path, destination); err != nil {
+				return fmt.Errorf("failed to copy directory %s to %s: %w", path, destination, err)
 			}
+		}
+		return nil
+	})
+	if err != nil {
+		fmt.Printf("Failed to copy directories: %v\n", err)
+		return
+	}
+
+	fmStorageListPath := filepath.Join(installPath, "FMStorage.list")
+	if _, err := os.Stat(fmStorageListPath); err == nil {
+		if err := copyFile(fmStorageListPath, filepath.Join(targetDir, "FMStorage.list")); err != nil {
+			fmt.Printf("Failed to copy FMStorage.list: %v\n", err)
 		}
 	}
+
 	fmt.Println("Foxmail邮箱取证结束")
 }

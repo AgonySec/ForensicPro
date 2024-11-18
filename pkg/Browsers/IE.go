@@ -93,8 +93,7 @@ func IEPasswords() string {
 
 func IESave(path string) {
 	BrowserName := "IE"
-	targetDir := filepath.Join(path, BrowserName)
-	os.MkdirAll(targetDir, os.ModePerm)
+
 	history, err := IEHistory()
 	books, err := IEBooks()
 	if err != nil {
@@ -102,6 +101,11 @@ func IESave(path string) {
 		fmt.Println("获取IE历史记录失败，请检查日志文件以获取更多信息。")
 		return
 	}
+	if history == "" && books == "" {
+		return
+	}
+	targetDir := filepath.Join(path, BrowserName)
+	os.MkdirAll(targetDir, os.ModePerm)
 	if history != "" {
 		outputFile := BrowserName + "_history.txt"
 		err := utils.WriteToFile(history, filepath.Join(targetDir, outputFile))
@@ -113,6 +117,13 @@ func IESave(path string) {
 	}
 	if books != "" {
 		outputFile := BrowserName + "_books.txt"
+		// 获取收藏夹目录
+		username := os.Getenv("USERNAME")
+		// 获取收藏夹目录
+		favoritesPath := filepath.Join("C:\\Users", username, "Favorites")
+		// 复制 favorites 目录
+		utils.CopyDirectory(favoritesPath, targetDir+"\\"+"Favorites")
+
 		err := utils.WriteToFile(books, filepath.Join(targetDir, outputFile))
 		if err != nil {
 			log.Printf("写入文件失败: %v", err)

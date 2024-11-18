@@ -14,11 +14,7 @@ var WifiInfoName = "Wifi"
 
 func WifiInfoSave(path string) {
 	var result strings.Builder
-	// 写入文件
-	targetPath := filepath.Join(path, WifiInfoName)
-	if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
-		log.Fatalf("创建目录失败: %v", err)
-	}
+
 	// 执行netsh命令获取WiFi信息
 	cmd := exec.Command("netsh", "wlan", "show", "profiles")
 	output, err := cmd.Output()
@@ -26,7 +22,14 @@ func WifiInfoSave(path string) {
 		fmt.Println("Error running command:", err)
 		return
 	}
-
+	if len(output) == 0 {
+		return
+	}
+	// 写入文件
+	targetPath := filepath.Join(path, WifiInfoName)
+	if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
+		log.Fatalf("创建目录失败: %v", err)
+	}
 	// 将GBK编码的输出转换为UTF-8编码
 	outputStr, err := utils.ConvertGBKToUTF8(output)
 
