@@ -43,7 +43,6 @@ func QQSave(path string) {
 		if err != nil {
 			return // 如果读取失败，跳过
 		}
-		builder.WriteString("All QQ number:\n")
 
 		for _, dir := range directories {
 			if dir.IsDir() { // 确保是目录

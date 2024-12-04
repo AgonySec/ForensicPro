@@ -165,40 +165,38 @@ func ReadSQLiteDB_url2(dbPath string, query string) (string, []string) {
 }
 
 // ReadSQLiteDB 读取 SQLite 数据库并返回查询结果
-func ReadSQLiteDB(dbPath string, query string) (string, error) {
-	// 创建一个 strings.Builder 对象，用于构建最终的字符串结果
-	var builder strings.Builder
+func ReadSQLiteDB(dbPath string, query string, CSVData [][]string) ([][]string, error) {
 
 	// 创建一个临时文件
 	tempFile, err := os.CreateTemp("", "chrome-history-*.db")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer os.Remove(tempFile.Name()) // 确保临时文件在函数结束时被删除
 
 	// 将数据库文件复制到临时文件
 	if err := copyFile(dbPath, tempFile.Name()); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// 打开 SQLite 数据库
 	db, err := sql.Open("sqlite3", tempFile.Name())
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer db.Close()
 
 	// 执行 SQL 查询
 	rows, err := db.Query(query)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer rows.Close()
 
 	// 获取查询结果的列数
 	columns, err := rows.Columns()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// 预分配切片以存储每一行的数据
@@ -212,7 +210,7 @@ func ReadSQLiteDB(dbPath string, query string) (string, error) {
 		}
 
 		if err := rows.Scan(valuePtrs...); err != nil {
-			return "", nil
+			return nil, nil
 		}
 		var host string
 		var name string
@@ -223,7 +221,7 @@ func ReadSQLiteDB(dbPath string, query string) (string, error) {
 			switch v := value.(type) {
 			case string:
 				fieldValue = v
-				//builder.WriteString(v)
+
 			}
 			if columns[i] == "host" {
 				host = fieldValue
@@ -235,20 +233,13 @@ func ReadSQLiteDB(dbPath string, query string) (string, error) {
 				cookieValue = fieldValue
 			}
 		}
-		// 构建 JSON 字符串
-		jsonStr2 := fmt.Sprintf(`{
-			"host": "%s",
-			"name": "%s",
-			"value": "%s"
-		}`, host, name, cookieValue)
-		builder.WriteString(jsonStr2)
-		//builder.WriteString("[" + host + "] \t {" + name + "}={" + cookieValue + "}")
-		//builder.WriteString("\n")
+
+		CSVData = append(CSVData, []string{host, name, cookieValue})
 
 	}
 
 	// 返回构建的字符串结果
-	return builder.String(), nil
+	return CSVData, nil
 }
 
 // 辅助函数：复制文件

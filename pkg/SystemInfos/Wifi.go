@@ -13,7 +13,6 @@ import (
 var WifiInfoName = "Wifi"
 
 func WifiInfoSave(path string) {
-	var result strings.Builder
 
 	// 执行netsh命令获取WiFi信息
 	cmd := exec.Command("netsh", "wlan", "show", "profiles")
@@ -25,16 +24,16 @@ func WifiInfoSave(path string) {
 	if len(output) == 0 {
 		return
 	}
-	// 写入文件
-	targetPath := filepath.Join(path, WifiInfoName)
-	if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
-		log.Fatalf("创建目录失败: %v", err)
-	}
+
 	// 将GBK编码的输出转换为UTF-8编码
 	outputStr, err := utils.ConvertGBKToUTF8(output)
 
 	// 将输出转换为字符串并分割为行
 	profiles := strings.Split(outputStr, "\n")
+	// 准备存储WiFi数据的切片
+	var wifiData [][]string
+	// 添加CSV头
+	wifiData = append(wifiData, []string{"SSID", "Password"})
 
 	// 遍历每个WiFi配置文件
 	for _, profile := range profiles {
@@ -60,15 +59,28 @@ func WifiInfoSave(path string) {
 					password = strings.Split(line, ":")[1]
 					password = strings.TrimLeft(password, " ")
 					password = strings.TrimRight(password, "\r")
-					result.WriteString(fmt.Sprintf("SSID: %s, Password: %s\n", name, password))
 					break
 				}
 			}
+
+			// 添加WiFi数据到切片
+			wifiData = append(wifiData, []string{name, password})
+
 		}
 	}
-	err = utils.WriteToFile(result.String(), targetPath+"\\"+"wifi_passwords.txt")
-	if err != nil {
-		return
+	// 写入文件
+	targetPath := filepath.Join(path, WifiInfoName)
+	if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
+		log.Fatalf("创建目录失败: %v", err)
+	}
+	csvFilePath := filepath.Join(targetPath, "wifi_passwords.csv")
+
+	if len(wifiData) > 1 {
+		// 调用函数将数据写入CSV文件
+		if err := utils.WriteDataToCSV(csvFilePath, wifiData); err != nil {
+			fmt.Println("Error writing WiFi data to CSV:", err)
+			return
+		}
 	}
 
 	fmt.Println("WiFi 取证结束")

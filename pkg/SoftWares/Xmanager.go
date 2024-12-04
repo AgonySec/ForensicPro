@@ -3,7 +3,6 @@ package SoftWares
 import (
 	"ForensicPro/utils"
 	"bufio"
-	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
@@ -55,13 +54,13 @@ func GetAllAccessibleFiles(rootPath string) {
 }
 
 // DecryptSessions 解密会话文件
-func DecryptSessions() string {
-	var stringBuilder bytes.Buffer
+func DecryptSessions() [][]string {
+
 	// 获取当前用户信息
 	var currentUser, err = user.Current()
 	if err != nil {
 		fmt.Println("获取当前用户信息失败:", err)
-		return ""
+		return nil
 	}
 	username := currentUser.Username
 	// 对用户名进行切割
@@ -75,23 +74,18 @@ func DecryptSessions() string {
 	}
 	sid, _ := utils.GetCurrentUserSID()
 	//text := fmt.Sprintf("%d", currentUser)
-
+	// 准备存储WiFi数据的切片
+	var CSVData [][]string
+	// 添加CSV头
+	CSVData = append(CSVData, []string{"Session File", "Version", "Host", "UserName", "rawPass", "UserName", "Sid", "Decrypt rawPass"})
 	for _, sessionFile := range sessionFiles {
 		list := ReadConfigFile(sessionFile)
 		if len(list) >= 4 {
-			stringBuilder.WriteString(fmt.Sprintf("Session File: %s\n", sessionFile))
-			stringBuilder.WriteString(fmt.Sprintf("Version: %s\n", list[0]))
-			stringBuilder.WriteString(fmt.Sprintf("Host: %s\n", list[1]))
-			stringBuilder.WriteString(fmt.Sprintf("UserName: %s\n", list[2]))
-			stringBuilder.WriteString(fmt.Sprintf("rawPass: %s\n", list[3]))
-			stringBuilder.WriteString(fmt.Sprintf("UserName: %s\n", username))
-			stringBuilder.WriteString(fmt.Sprintf("Sid: %s\n", sid))
-			stringBuilder.WriteString(fmt.Sprintf("%s\n", Decrypt(username, sid, list[3], strings.ReplaceAll(list[0], "\r", ""))))
-			stringBuilder.WriteString("\n")
+			decryptPass := Decrypt(username, sid, list[3], strings.ReplaceAll(list[0], "\r", ""))
+			CSVData = append(CSVData, []string{sessionFile, list[0], list[1], list[2], list[3], username, sid, decryptPass})
 		}
 	}
-
-	return stringBuilder.String()
+	return CSVData
 }
 
 func Decrypt(username, sid, rawPass, ver string) string {
@@ -104,7 +98,7 @@ func Decrypt(username, sid, rawPass, ver string) string {
 		array2 := array[:len(array)-32]
 		bytes := utils.Decrypt(keyHash, array2)
 
-		return "Decrypt rawPass: " + string(bytes)
+		return string(bytes)
 	}
 
 	if strings.HasPrefix(ver, "5.1") || strings.HasPrefix(ver, "5.2") {
@@ -116,7 +110,7 @@ func Decrypt(username, sid, rawPass, ver string) string {
 		array4 := array3[:len(array3)-32]
 		bytes2 := utils.Decrypt(keyHash2, array4)
 
-		return "Decrypt rawPass: " + string(bytes2)
+		return string(bytes2)
 	}
 
 	if strings.HasPrefix(ver, "5") || strings.HasPrefix(ver, "6") || strings.HasPrefix(ver, "7.0") {
@@ -128,7 +122,7 @@ func Decrypt(username, sid, rawPass, ver string) string {
 		array6 := array5[:len(array5)-32]
 		bytes3 := utils.Decrypt(keyHash3, array6)
 
-		return "Decrypt rawPass: " + string(bytes3)
+		return string(bytes3)
 	}
 
 	if strings.HasPrefix(ver, "7") {
@@ -144,7 +138,7 @@ func Decrypt(username, sid, rawPass, ver string) string {
 		array8 := array7[:len(array7)-32]
 		bytes4 := utils.Decrypt(keyHash4, array8)
 
-		return "Decrypt rawPass: " + string(bytes4)
+		return string(bytes4)
 	}
 
 	return ""
@@ -231,10 +225,13 @@ func XmanagerSave(path string) {
 		}
 
 		sessionstext := DecryptSessions()
-		err := utils.WriteToFile(sessionstext, targetPath+"\\sessions.txt")
-		if err != nil {
-			return
+		if len(sessionstext) > 1 {
+			err := utils.WriteDataToCSV(targetPath+"\\sessions.csv", sessionstext)
+			if err != nil {
+				return
+			}
 		}
+
 	}
 	fmt.Println("Xmanager 取证结束")
 

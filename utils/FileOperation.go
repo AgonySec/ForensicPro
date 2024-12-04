@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/csv"
 	"fmt"
 	"github.com/go-ole/go-ole"
 	"github.com/go-ole/go-ole/oleutil"
@@ -30,11 +31,11 @@ func ReadFileContent(filePath string) (string, error) {
 
 	return content, nil
 }
-func GetShortcutTargetPath(shortcutPath string) string {
+func GetShortcutTargetPath(shortcutPath string) (string, string) {
 
 	err := ole.CoInitialize(0)
 	if err != nil {
-		return ""
+		return "", ""
 
 	}
 	defer ole.CoUninitialize()
@@ -42,7 +43,7 @@ func GetShortcutTargetPath(shortcutPath string) string {
 	oleShellObject, err := oleutil.CreateObject("WScript.Shell")
 	if err != nil {
 		fmt.Println("创建WScript.Shell对象失败:", err)
-		return ""
+		return "", ""
 
 	}
 	defer oleShellObject.Release()
@@ -50,24 +51,44 @@ func GetShortcutTargetPath(shortcutPath string) string {
 	shellObject, err := oleShellObject.QueryInterface(ole.IID_IDispatch)
 	if err != nil {
 		fmt.Println("获取IDispatch接口失败:", err)
-		return ""
+		return "", ""
 
 	}
 	defer shellObject.Release()
 
 	shortcut, err := oleutil.CallMethod(shellObject, "CreateShortcut", shortcutPath)
 	if err != nil {
-		return ""
+		return "", ""
 
 	}
 
 	targetPath, err := oleutil.GetProperty(shortcut.ToIDispatch(), "TargetPath")
 	if err != nil {
 		fmt.Println("获取目标路径失败:", err)
-		return ""
+		return "", ""
+
 	}
 	fileName := filepath.Base(shortcutPath)
-	result := fileName + ":			" + targetPath.ToString()
-	return result
 
+	return fileName, targetPath.ToString()
+
+}
+func WriteDataToCSV(csvFilePath string, data [][]string) error {
+	file, err := os.Create(csvFilePath)
+	if err != nil {
+		return fmt.Errorf("Error creating CSV file: %v", err)
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// 写入CSV数据
+	for _, record := range data {
+		if err := writer.Write(record); err != nil {
+			return fmt.Errorf("Error writing to CSV: %v", err)
+		}
+	}
+
+	return nil
 }

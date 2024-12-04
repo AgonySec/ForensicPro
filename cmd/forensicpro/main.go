@@ -16,12 +16,12 @@ import (
 func main() {
 	startTime := time.Now() // 记录程序开始时间
 	utils.PrintBanner()     // 打印Banner
-	path := "result"
-	status := utils.IsAdmin()
-	if status == false {
+	//判断是否为管理员权限
+	if utils.IsAdmin() == false {
 		fmt.Println("请使用管理员权限运行本程序")
 		return
 	}
+	path := "result"
 	GetAll(path)
 	endTime := time.Now()                 // 记录程序结束时间
 	elapsedTime := endTime.Sub(startTime) // 计算程序运行时间
@@ -85,6 +85,7 @@ func GetAll(path string) {
 	go func() { SystemInfos.WindowsLogsSave(path); wg.Done() }()
 
 	wg.Wait()
+	fmt.Println("已完成全部取证，压缩文件中：")
 	err := utils.ZipDirectory(path, "ForensicPro_result.zip")
 	if err != nil {
 		return

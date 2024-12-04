@@ -15,13 +15,14 @@ import (
 
 var FinalShellName = "FinalShell"
 
-func GetFinalShellInfo(finalShellPath string) string {
-	var builder strings.Builder
+func GetFinalShellInfo(finalShellPath string) [][]string {
 	files, err := ioutil.ReadDir(finalShellPath)
 	if err != nil {
 		fmt.Println("读取目录失败:", err)
-		return ""
+		return nil
 	}
+	var CSVData [][]string
+	CSVData = append(CSVData, []string{"host", "port", "username", "password"})
 	for _, file := range files {
 		if !strings.HasSuffix(file.Name(), "_connect_config.json") {
 			continue
@@ -40,14 +41,9 @@ func GetFinalShellInfo(finalShellPath string) string {
 		host := extractValue(input, `"host":"(.*?)"`)
 		port := extractValue(input, `"port":(.*?),`)
 
-		builder.WriteString(fmt.Sprintf("host: %s\n", host))
-		builder.WriteString(fmt.Sprintf("port: %s\n", port))
-		builder.WriteString(fmt.Sprintf("user_name: %s\n", userName))
-		//builder.WriteString(fmt.Sprintf("password: %s\n", password))
-		builder.WriteString(fmt.Sprintf("password: %s\n", passDecode(password)))
-		builder.WriteString("\n")
+		CSVData = append(CSVData, []string{host, port, userName, passDecode(password)})
 	}
-	return builder.String()
+	return CSVData
 }
 
 func passDecode(input string) string {
@@ -55,7 +51,6 @@ func passDecode(input string) string {
 
 	exePath := filepath.Join(currentDir, "finalshellDC.exe")
 	if _, err := os.Stat(exePath); os.IsNotExist(err) {
-		//log.Printf("文件 %s 不存在，跳过执行", exePath)
 		return input
 	}
 
@@ -65,7 +60,6 @@ func passDecode(input string) string {
 
 	output, err := cmd.Output()
 	if err != nil {
-		//log.Printf("执行命令时出错: %v，跳过执行", err)
 		return input
 	}
 
@@ -86,12 +80,12 @@ func FinalShellSave(path string) {
 
 	if _, err := os.Stat(finalShellPath); err == nil {
 		info := GetFinalShellInfo(finalShellPath)
-		if info != "" {
+		if len(info) > 1 {
 			targetPath := filepath.Join(path, FinalShellName)
 			if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
 				log.Fatalf("创建目录失败: %v", err)
 			}
-			err := utils.WriteToFile(info, targetPath+"\\FinalShell.txt")
+			err := utils.WriteDataToCSV(targetPath+"\\FinalShell.csv", info)
 			if err != nil {
 				return
 			}

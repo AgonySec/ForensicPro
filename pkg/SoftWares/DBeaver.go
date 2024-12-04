@@ -14,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 )
 
 var DBeaverName = "DBeaver"
@@ -52,32 +51,30 @@ func MatchDataSource(filePath, jdbcKey string) string {
 	}
 	// 查找指定键的 URL
 	if conn, exists := data.Connections[jdbcKey]; exists {
-		return "host: " + conn.Configuration.URL + "\n"
+		return conn.Configuration.URL
 	}
 
 	return ""
 }
 
 // ConnectionInfo 提取连接信息
-func ConnectionInfo(config string, sources string) string {
-	var sb strings.Builder
+func ConnectionInfo(config string, sources string) [][]string {
+
 	pattern := `"([^\"]+)"\s*:\s*\{\s*"#connection"\s*:\s*\{\s*"user"\s*:\s*"([^\"]+)"\s*,\s*"password"\s*:\s*"([^\"]+)"\s*\}\s*\}`
 
 	re := regexp.MustCompile(pattern)
 	matches := re.FindAllStringSubmatch(config, -1)
-
+	var CSVData [][]string
+	CSVData = append(CSVData, []string{"host", "username", "password"})
 	for _, match := range matches {
 		key := match[1]
 		user := match[2]
 		password := match[3]
 
-		sb.WriteString(MatchDataSource(sources, key))
-		sb.WriteString("username: " + user + "\n")
-		sb.WriteString("password: " + password + "\n")
-		sb.WriteString("\n")
+		CSVData = append(CSVData, []string{MatchDataSource(sources, key), user, password})
 	}
 
-	return sb.String()
+	return CSVData
 }
 
 func DBeaverDecrypt(filePath string, keyHex string, ivHex string) (string, error) {
@@ -141,12 +138,15 @@ func DBeaverSave(path string) {
 	DBevardecrypt, _ := DBeaverDecrypt(path2, "babb4a9f774ab853c96c2d653dfe544a", "00000000000000000000000000000000")
 
 	content := ConnectionInfo(DBevardecrypt, path1)
-	if content != "" {
+	if len(content) > 1 {
 		targetPath := filepath.Join(path, DBeaverName)
 		if err := os.MkdirAll(targetPath, os.ModePerm); err != nil {
 			log.Fatalf("创建目录失败: %v", err)
 		}
-		utils.WriteToFile(content, targetPath+"\\"+DBeaverName+".txt")
+		err := utils.WriteDataToCSV(targetPath+"\\DBeaver.csv", content)
+		if err != nil {
+			return
+		}
 	}
 
 	fmt.Println("DBeaver取证结束")

@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// 存在bug,若使用管理员方式运行则会报错...
+// 存在bug,若使用管理员方式运行则会报错... 先弃用
 func GetProcessesOpenedFiles(path string) {
 	var builder strings.Builder
 	// 获取当前系统中运行的所有进程

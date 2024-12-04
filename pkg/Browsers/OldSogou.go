@@ -14,16 +14,18 @@ var SogouName = "OldSogouExplorer"
 var SogouPath = GetOperaPath("SogouExplorer")
 var sougoDefaultPath = filepath.Join(SogouPath, "\\Webkit\\Default")
 
-func SogouCookies(targetPath string) string {
-	var builder strings.Builder
+func SogouCookies(targetPath string) ([][]string, error) {
+
+	var CSVData [][]string
+	CSVData = append(CSVData, []string{"host", "name", "value"})
 	sougoMasterKeyPath := filepath.Join(SogouPath, "\\Webkit")
-	sougoMasterkey, _ := utils.GetMasterKey(sougoMasterKeyPath)
+	sougoMasterkey, err := utils.GetMasterKey(sougoMasterKeyPath)
 	if sougoMasterkey == nil {
-		return ""
+		return nil, err
 	}
 	text := filepath.Join(sougoDefaultPath, "Cookies")
 	if _, err := os.Stat(text); os.IsNotExist(err) {
-		return ""
+		return nil, err
 	}
 	utils.CopyFile(sougoMasterKeyPath+"\\Local State", targetPath+"\\"+"Local State")
 	utils.CopyFile(text, targetPath+"\\"+"Cookies")
@@ -31,25 +33,25 @@ func SogouCookies(targetPath string) string {
 	// 创建临时文件
 	tempFileName, err := os.CreateTemp("", "temp-*.db")
 	if err != nil {
-		return ""
+		return nil, err
 	}
 	defer os.Remove(tempFileName.Name()) // 确保临时文件在函数结束时被删除
 
 	// 复制文件
 	if err := utils.CopyFile(text, tempFileName.Name()); err != nil {
-		return ""
+		return nil, err
 	}
 	// 连接 SQLite 数据库
 	db, err := sql.Open("sqlite3", tempFileName.Name())
 	if err != nil {
-		return ""
+		return nil, err
 	}
 	defer db.Close()
 
 	// 查询 UserRankUrl 表
 	rows, err := db.Query("SELECT host_key,name,encrypted_value FROM cookies")
 	if err != nil {
-		return ""
+		return nil, err
 	}
 	defer rows.Close()
 	// 遍历查询结果
@@ -58,7 +60,7 @@ func SogouCookies(targetPath string) string {
 		var hostKey, name string
 		var encryptedValue []byte
 		if err := rows.Scan(&hostKey, &name, &encryptedValue); err != nil {
-			return ""
+			return nil, err
 		}
 
 		// 解密 encrypted_value
@@ -66,15 +68,15 @@ func SogouCookies(targetPath string) string {
 		if err != nil {
 			continue
 		}
-
+		CSVData = append(CSVData, []string{hostKey, name, string(decryptedValue)})
 		// 构建输出字符串
-		builder.WriteString(fmt.Sprintf("[%s] \t {%s}={%s}\n", hostKey, name, decryptedValue))
+		//builder.WriteString(fmt.Sprintf("[%s] \t {%s}={%s}\n", hostKey, name, decryptedValue))
 	}
 
 	if err := rows.Err(); err != nil {
-		return ""
+		return nil, err
 	}
-	return builder.String()
+	return CSVData, nil
 }
 func SogouHistory(targetPath string) string {
 	var builder strings.Builder
@@ -137,15 +139,15 @@ func SogouSave(path string) {
 			log.Fatalf("创建目录失败: %v", err)
 		}
 		sogouHistory := SogouHistory(targetPath)
-		sogouCookies := SogouCookies(targetPath)
+		sogouCookies, _ := SogouCookies(targetPath)
 
 		if sogouHistory != "" {
 			outputFile := SogouName + "_history.txt"
 			utils.WriteToFile(sogouHistory, targetPath+"\\"+outputFile)
 		}
-		if sogouCookies != "" {
-			outputFile := SogouName + "_cookies.txt"
-			utils.WriteToFile(sogouCookies, targetPath+"\\"+outputFile)
+		if len(sogouCookies) > 1 {
+			outputFile := SogouName + "_cookies.csv"
+			utils.WriteDataToCSV(targetPath+"\\"+outputFile, sogouCookies)
 		}
 		// 检查并复制Local Storage文件
 		sougoLSPath := filepath.Join(sougoDefaultPath, "Local Storage")

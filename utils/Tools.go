@@ -176,24 +176,6 @@ func CopyFile(src, dst string) error {
 	return nil
 }
 
-// 辅助函数：复制文件
-func CopyFile_old(src, dst string) error {
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer srcFile.Close()
-
-	dstFile, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer dstFile.Close()
-
-	_, err = io.Copy(dstFile, srcFile)
-	return err
-}
-
 // CopyDirectory 递归复制目录
 func CopyDirectory(src, dst string) error {
 	// 读取源目录的内容
@@ -455,7 +437,7 @@ func GetCurrentUserSID() (string, error) {
 	return matches[0], nil
 }
 
-// 检查程序是否以管理员身份运行
+// IsAdmin 检查程序是否以管理员身份运行
 func IsAdmin() bool {
 	_, err := exec.Command("net", "session").Output()
 	if err != nil {
