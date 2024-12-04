@@ -1,6 +1,5 @@
 # ForensicPro - 一款Windows自动取证工具
-
-​																											![](https://badgen.net/github/stars/AgonySec/ForensicPro)![GitHub download counter](https://img.shields.io/github/downloads/AgonySec/ForensicPro/total)
+![star](https://badgen.net/github/stars/AgonySec/ForensicPro) ![GitHub download counter](https://img.shields.io/github/downloads/AgonySec/ForensicPro/total)
 
 ## 介绍
 
