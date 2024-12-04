@@ -439,8 +439,24 @@ func GetCurrentUserSID() (string, error) {
 
 // IsAdmin 检查程序是否以管理员身份运行
 func IsAdmin() bool {
-	_, err := exec.Command("net", "session").Output()
+	cmd := exec.Command("net", "session")
+	err := cmd.Run()
 	if err != nil {
+		// 进一步检查错误信息
+		var exitError *exec.ExitError
+		ok := errors.As(err, &exitError)
+		if ok {
+			switch exitError.ExitCode() {
+			case 5:
+				fmt.Println("访问被拒绝。可能没有管理员权限。")
+			case 53:
+				fmt.Println("找不到网络路径。")
+			default:
+				fmt.Printf("检查管理员权限时发生错误，错误代码: %d\n", exitError.ExitCode())
+			}
+		} else {
+			fmt.Println("检查管理员权限时发生未知错误。")
+		}
 		return false
 	}
 	return true

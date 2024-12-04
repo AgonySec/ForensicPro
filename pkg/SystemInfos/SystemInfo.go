@@ -168,7 +168,7 @@ func GetNetworkList(path string) {
 	fmt.Println("NetworkList无线信息取证结束")
 }
 
-// GetRecentDocs RecentDocs最近打开文件 注册表 HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\RecentDocs
+// GetRecentDocs RecentDocs最近打开文件(注册表内容全是编码过的，看不懂) 注册表 HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\RecentDocs
 func GetRecentDocs(path string) {
 	cmd := exec.Command("reg", "query", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\RecentDocs", "/s")
 
@@ -872,7 +872,7 @@ func GetArpTable(path string) {
 	fmt.Println("ArpTable信息取证结束")
 }
 
-// 获取文件系统快照信息
+// GetFsSnapshot 获取文件系统快照信息
 func GetFsSnapshot(path string) {
 	// 执行 vssadmin list shadows 获取 VSS 快照信息
 	cmd := exec.Command("vssadmin", "List", "Shadows")
@@ -888,7 +888,7 @@ func GetFsSnapshot(path string) {
 	fmt.Println("FsSnapshot信息取证结束")
 }
 
-// 获取DNS缓存信息
+// GetDnsCaches 获取DNS缓存信息
 func GetDnsCaches(path string) {
 	// 执行 ipconfig /displaydns 获取 DNS 缓存信息
 	cmd := exec.Command("ipconfig", "/displaydns")
@@ -906,7 +906,7 @@ func GetDnsCaches(path string) {
 	fmt.Println("DnsCaches信息取证结束")
 }
 
-// 获取共享信息
+// GetShares 获取共享信息
 func GetShares(path string) {
 	// 执行 net share 获取共享信息
 	cmd := exec.Command("net", "share")
@@ -1068,6 +1068,7 @@ func GetLogicalDisk(path string) {
 	fmt.Println("Logicaldisk信息取证结束")
 }
 
+// GetCPU 获取CPU信息
 func GetCPU(path string) {
 	var cpu []utils.Win32_CPU
 	var Data [][]string

@@ -1,5 +1,7 @@
 # ForensicPro - 一款Windows自动取证工具
 
+​																											![](https://badgen.net/github/stars/AgonySec/ForensicPro)![GitHub download counter](https://img.shields.io/github/downloads/AgonySec/ForensicPro/total)
+
 ## 介绍
 
 基于golang实现的一款Windows自动取证工具，如果对你有帮助的话，不妨点个star🐟
