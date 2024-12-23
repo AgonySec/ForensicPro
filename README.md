@@ -3,7 +3,7 @@
 
 ## 介绍
 
-基于golang实现的一款Windows自动取证工具，如果对你有帮助的话，不妨点个star🐟
+基于Golang实现的一款Windows自动取证工具，如果对你有帮助的话，不妨点个star🐟，main主分支是完全版，dev是精简版（去除了通讯工具取证和常用软件取证）。
 
 　　取证内容包括：
 
@@ -17,7 +17,7 @@
 
 　　5．     常用软件取证
 
-　　6．     系统信息取证，包括WIFI、安装软件目录、截屏、systeminfo、注册表、硬件信息等等。。。
+　　6．     系统信息取证，包括启动项、计划任务、systeminfo、注册表、硬件信息等等。。。
 
 
 
@@ -41,7 +41,9 @@ go build -ldflags="-w -s" -o ForensicPro.exe -trimpath .\cmd\forensicpro\main.go
 
 　　管理员方式运行ForensicPro.exe即可，也可以在管理员命令行窗口运行，无需联网，运行结束之后会生成一个ForensicPro_result.zip，取证结果都保存在里面压缩包中
 
-![image-20241108171619145](assets/image-20241108171619145.png)
+![image-20241223104104976](assets/image-20241223104104976.png)
+
+![image-20241223104347411](assets/image-20241223104347411.png)
 
 ## 注意
 
@@ -49,6 +51,8 @@ go build -ldflags="-w -s" -o ForensicPro.exe -trimpath .\cmd\forensicpro\main.go
 
 - go 1.20.1
 - Windows 11
+
+主要是预读取文件文件夹和win日志文件夹需要管理员权限，其他功能倒也不需要管理员权限
 
 ## 许可证
 
